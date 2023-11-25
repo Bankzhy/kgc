@@ -6,7 +6,6 @@ import re
 from torch.utils.data.dataset import Dataset
 
 import enums
-from data_preprocessing.kg_matcher import KGMatcher
 from data_preprocessing.pretrain.data_utils import load_dataset_from_dir
 from data_preprocessing.pretrain.vocab import load_vocab, init_vocab, Vocab
 from model.configuration_bart import BartConfig

@@ -21,7 +21,6 @@ from torch.utils.data import RandomSampler, DistributedSampler
 from tqdm import tqdm
 
 import enums
-from data_preprocessing.kg_matcher import KGMatcher
 from data_preprocessing.pretrain.CodeDataset import CodeDataset
 from data_preprocessing.pretrain.vocab import load_vocab, init_vocab
 from model import KGBartForConditionalGeneration
