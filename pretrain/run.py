@@ -13,7 +13,6 @@ import numpy as np
 import glob
 from torch.utils.data import RandomSampler, DistributedSampler
 from tqdm import tqdm
-import mysql.connector
 
 import enums
 from data_preprocessing.kg_matcher import KGMatcher
