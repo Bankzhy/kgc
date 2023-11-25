@@ -63,7 +63,7 @@ class PretrainArguments:
     )
 
     train_batch_size: int = field(
-        default=8
+        default=32
     )
 
     num_workers: int = field(
@@ -95,11 +95,11 @@ class PretrainArguments:
     )
 
     input_max_len: int = field(
-        default=16
+        default=256
     )
 
     output_max_len: int = field(
-        default=16
+        default=128
     )
 
     gradient_accumulation_steps: int = field(
