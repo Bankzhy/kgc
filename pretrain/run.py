@@ -28,7 +28,7 @@ from data_preprocessing.pretrain.CodeDataset import CodeDataset
 from data_preprocessing.pretrain.vocab import load_vocab, init_vocab
 from model import KGBartForConditionalGeneration
 from model.configuration_bart import BartConfig
-from nn.data_parallel import DataParallelImbalance
+from cnn.data_parallel import DataParallelImbalance
 from pretrain.pretrain_args import add_pretrain_args
 from model.optimization import AdamW, get_linear_schedule_with_warmup
 
@@ -259,8 +259,8 @@ def run():
         model = DDP(model, device_ids=[
             args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
     elif n_gpu > 1:
-        model = torch.nn.DataParallel(model)
-        # model = DataParallelImbalance(model)
+        # model = torch.nn.DataParallel(model)
+        model = DataParallelImbalance(model)
 
     logger.info("***** CUDA.empty_cache() *****")
     torch.cuda.empty_cache()
