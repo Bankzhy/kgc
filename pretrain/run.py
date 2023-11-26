@@ -213,6 +213,7 @@ def run():
     #     # model = torch.nn.DataParallel(model)
     #     model = DataParallelImbalance(model)
 
+    model.to(device)
     # Prepare optimizer
     param_optimizer = list(model.named_parameters())
     no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
@@ -250,7 +251,6 @@ def run():
 
         model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
 
-    model.to(device)
     if args.local_rank != -1:
         try:
             from torch.nn.parallel import DistributedDataParallel as DDP
