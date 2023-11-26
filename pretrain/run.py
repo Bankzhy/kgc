@@ -201,17 +201,17 @@ def run():
     if args.local_rank == 0:
         dist.barrier()
 
-    model.to(device)
-    if args.local_rank != -1:
-        try:
-            from torch.nn.parallel import DistributedDataParallel as DDP
-        except ImportError:
-            raise ImportError("DistributedDataParallel")
-        model = DDP(model, device_ids=[
-            args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
-    elif n_gpu > 1:
-        # model = torch.nn.DataParallel(model)
-        model = DataParallelImbalance(model)
+    # model.to(device)
+    # if args.local_rank != -1:
+    #     try:
+    #         from torch.nn.parallel import DistributedDataParallel as DDP
+    #     except ImportError:
+    #         raise ImportError("DistributedDataParallel")
+    #     model = DDP(model, device_ids=[
+    #         args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
+    # elif n_gpu > 1:
+    #     # model = torch.nn.DataParallel(model)
+    #     model = DataParallelImbalance(model)
 
     # Prepare optimizer
     param_optimizer = list(model.named_parameters())
@@ -249,12 +249,18 @@ def run():
             raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
 
         model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
-        if torch.cuda.device_count() > 1:  # 使用多GPU
-            print("Let's use", torch.cuda.device_count(), "GPUs!")
-            # model = nn.DataParallel(model_quest_bert_LSTM)
 
-            # model_quest_bert_LSTM = model_quest_bert_LSTM.cuda(device)  # cuda(device)
-            model = nn.parallel.DistributedDataParallel(model, find_unused_parameters=True)
+    model.to(device)
+    if args.local_rank != -1:
+        try:
+            from torch.nn.parallel import DistributedDataParallel as DDP
+        except ImportError:
+            raise ImportError("DistributedDataParallel")
+        model = DDP(model, device_ids=[
+            args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
+    elif n_gpu > 1:
+        # model = torch.nn.DataParallel(model)
+        model = DataParallelImbalance(model)
 
     logger.info("***** CUDA.empty_cache() *****")
     torch.cuda.empty_cache()
