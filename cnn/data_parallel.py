@@ -13,6 +13,8 @@ def scatter_imbalance(inputs, target_gpus, dim=0):
     """
     def scatter_map(obj):
         if isinstance(obj, torch.Tensor):
+            if (len(target_gpus) == 2) and (obj.size(dim) == 32):
+                return Scatter.apply(target_gpus, (4, 6, 6, 6), dim, obj)
             if (len(target_gpus) == 4) and (obj.size(dim) == 22):
                 return Scatter.apply(target_gpus, (4, 6, 6, 6), dim, obj)
             if (len(target_gpus) == 4) and (obj.size(dim) == 60):
@@ -108,7 +110,7 @@ class DataParallelImbalance(DataParallel):
             return self.module(*inputs[0], **kwargs[0])
         replicas = self.replicate(self.module, self.device_ids[:len(inputs)])
         outputs = self.parallel_apply(replicas, inputs, kwargs)
-        return self.gather(outputs.loss, self.output_device)
+        return self.gather(outputs, self.output_device)
 
     def scatter_imbalance(self, inputs, kwargs, device_ids):
         return scatter_kwargs_imbalance(inputs, kwargs, device_ids, dim=self.dim)
