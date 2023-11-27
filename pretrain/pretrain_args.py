@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 @dataclass
 class PretrainArguments:
     output_dir: str = field(
-        default="../output/train_kgbart",
+        default="output/train_kgbart",
         metadata={'help': "The output directory where the model predictions and checkpoints will be written."}
     )
 
@@ -19,7 +19,7 @@ class PretrainArguments:
     )
 
     log_dir: str = field(
-        default="../log/train_kgbart",
+        default="log/train_kgbart",
         metadata={'help': "The output directory where the log will be written."}
     )
 
@@ -63,7 +63,10 @@ class PretrainArguments:
     )
 
     train_batch_size: int = field(
-        default=32
+        default=256,
+    )
+    eval_batch_size: int = field(
+        default=256,
     )
 
     num_workers: int = field(
@@ -167,6 +170,10 @@ class PretrainArguments:
     mass_mask_ratio: float = field(
         default=0.5,
         metadata={'help': 'Ratio between number of masked tokens and number of total tokens, in MASS'}
+    )
+
+    keep_last_epochs: int = field(
+        default=5,
     )
 
 

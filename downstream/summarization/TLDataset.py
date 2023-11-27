@@ -12,32 +12,29 @@ from model.configuration_bart import BartConfig
 from util import batch_list_to_batch_tensors
 
 
-class CodeDataset(Dataset):
+class TLDataset(Dataset):
 
-    def __init__(self, args, logger, entity_dict, dataset_type, task='mass', language=None):
+    def __init__(self, args, logger, entity_dict, task='mass', language=None):
         """
         :param path:dataset dir path
         :param task: [mass(Masked Span Prediction), nsp(Natural Language Prediction)]
         :param language:
         """
-        super(CodeDataset, self).__init__()
+        super(TLDataset, self).__init__()
         self.args = args
         self.paths = {}
         self.task = task
         self.language = language
         self.logger = logger
-        self.paths, self.languages, self.all_sources, self.all_codes, self.all_docs = load_dataset_from_dir(dataset_dir=args.dataset_dir, dataset_type=dataset_type)
+        self.paths, self.languages, self.all_sources, self.all_codes, self.all_docs = load_dataset_from_dir(dataset_dir=args.dataset_dir)
         self.code_tokenizer, self.nl_tokenizer = self.get_tokenizers()
 
-        entity2id = os.path.join(args.kg_path, 'entity2id.txt')
-        rel2id = os.path.join(args.kg_path, 'relation2id.txt')
-        train2id = os.path.join(args.kg_path, 'train2id.txt')
-
-        self.all_sources = random.sample(self.all_sources, int(len(self.all_sources) / 100))
-        self.all_codes = random.sample(self.all_codes, int(len(self.all_codes) / 100))
-        self.all_docs = random.sample(self.all_docs, int(len(self.all_docs) / 100))
-
-
+        # self.kg_matcher = KGMatcher(
+        #     entity2id = entity2id,
+        #     rel2id = rel2id,
+        #     train2id = train2id,
+        # )
+        # self.kg_matcher = kg_matcher
         self.entity_dict = entity_dict
         self.no_match_entity_id = 0
 

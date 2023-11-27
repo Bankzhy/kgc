@@ -81,7 +81,7 @@ def iter_all_files(base):
         for f in fs:
             yield os.path.join(root, f)
 
-def iter_pre_train_dataset_files(lang_dir, lang):
+def iter_pre_train_dataset_files(lang_dir, dataset_type, lang):
     """
     Get files for pre-training, all files with extension ``jsonl`` will be included.
 
@@ -102,8 +102,15 @@ def iter_pre_train_dataset_files(lang_dir, lang):
     # if lang in [enums.LANG_GO, enums.LANG_JAVA, enums.LANG_PYTHON, enums.LANG_JAVASCRIPT, enums.LANG_PHP,
     #             enums.LANG_RUBY]:
     if lang in ['java']:
+        if dataset_type == "train":
+            path = os.path.join(lang_dir, 'train.jsonl')
+        elif dataset_type == "valid":
+            path = os.path.join(lang_dir, 'valid.jsonl')
+        else:
+            path = os.path.join(lang_dir, 'test.jsonl')
 
-        return [file for file in iter_all_files(base=lang_dir) if file.endswith('.jsonl')]
+        # return [file for file in iter_all_files(base=lang_dir) if file.endswith('.jsonl')]
+        return [path]
     return []
 
 def load_pre_train_dataset(file, lang):
@@ -269,7 +276,7 @@ def split_identifier(identifier):
     return words
 
 
-def load_dataset_from_dir(dataset_dir):
+def load_dataset_from_dir(dataset_dir, dataset_type):
     """
     Load all files in the given dir, only for pre-training.
 
@@ -307,7 +314,7 @@ def load_dataset_from_dir(dataset_dir):
             continue
 
         lang = file
-        dataset_files = iter_pre_train_dataset_files(path, lang=lang)
+        dataset_files = iter_pre_train_dataset_files(path, dataset_type, lang=lang)
         if len(dataset_files) > 0:
             logger.info(f'  Language: {lang}')
             paths[lang] = dataset_files
@@ -322,44 +329,10 @@ def load_dataset_from_dir(dataset_dir):
                 new_names = []
                 new_names_wo_name = []
                 only_names = []
-                # asts = []
-                # for source, code, name, code_wo_name in tqdm(zip(sources, codes, names, codes_wo_name),
-                #                                              desc=f'Parsing {os.path.basename(dataset_file_path)}',
-                #                                              leave=False,
-                #                                              total=len(sources)):
-                #     try:
-                #         ast, nl, nl_wo_name = generate_single_ast_nl(source=source,
-                #                                                      lang=lang,
-                #                                                      name=name,
-                #                                                      replace_method_name=True)
-                #         new_sources.append(source)
-                #         new_codes.append(code)
-                        # new_codes_wo_name.append(code_wo_name)
-                        # new_names.append(nl)
-                #         new_names_wo_name.append(nl_wo_name)
-                #         # asts.append(ast)
-                #         only_names.append(name)
-                #     except Exception:
-                #         continue
-
-                # all_sources += new_sources
-                # all_codes += new_codes
-                # all_codes_wo_name += new_codes_wo_name
-                # all_names += new_names
-                # all_names_wo_name += new_names_wo_name
-                # all_only_names += only_names
-                # # all_asts += asts
 
                 all_sources += sources
                 all_codes += sources
                 all_docs += docs
-
-                # n_line = len(new_sources)
-                # languages += [lang for _ in range(n_line)]
-                # n_sample += n_line
-                #
-                # logger.info(f'    File: {dataset_file_path}, {n_line} samples')
-
             logger.info(f'  {lang} dataset size: {n_sample}')
 
     # assert len(languages) == len(all_sources) == len(all_codes) == len(all_codes_wo_name) == \

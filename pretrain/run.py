@@ -1,3 +1,4 @@
+import re
 import sys
 import os
 
@@ -76,6 +77,23 @@ def load_entity_dict(args):
             idx = int(idx)
             dict[ll[0]] = idx
     return dict
+def checkpoint_paths(path, pattern=r"model(\d+)\.pt"):
+    """Retrieves all checkpoints found in `path` directory.
+
+    Checkpoints are identified by matching filename to the specified pattern. If
+    the pattern contains groups, the result will be sorted by the first group in
+    descending order.
+    """
+    pt_regexp = re.compile(pattern)
+    files = os.listdir(path)
+
+    entries = []
+    for i, f in enumerate(files):
+        m = pt_regexp.fullmatch(f)
+        if m is not None:
+            idx = float(m.group(1)) if len(m.groups()) > 0 else int(f.split(".")[1])
+            entries.append((idx, m.group(0)))
+    return [os.path.join(path, x[1]) for x in sorted(entries, reverse=True)]
 
 def run():
     parser = argparse.ArgumentParser()
@@ -137,9 +155,10 @@ def run():
         train_dataset = CodeDataset(
             args=args,
             logger=logger,
+            entity_dict=entity_dict,
+            dataset_type='train',
             task=enums.TASK_MASS,
             language='java',
-            entity_dict=entity_dict
         )
         if args.local_rank == -1:
             train_sampler = RandomSampler(train_dataset, replacement=False)
@@ -152,6 +171,31 @@ def run():
                                                        num_workers=args.num_workers,
                                                        collate_fn=batch_list_to_batch_tensors,
                                                        pin_memory=False)
+
+
+    if args.do_eval:
+        print("Loading Dev Dataset", args.dataset_dir)
+        dev_dataset = CodeDataset(
+            args=args,
+            logger=logger,
+            entity_dict=entity_dict,
+            dataset_type='valid',
+            task=enums.TASK_MASS,
+            language='java',
+        )
+        if args.local_rank == -1:
+            dev_sampler = RandomSampler(dev_dataset, replacement=False)
+            _batch_size = args.eval_batch_size
+        else:
+            dev_sampler = DistributedSampler(dev_dataset)
+            _batch_size = args.eval_batch_size // dist.get_world_size()
+        dev_dataloader = torch.utils.data.DataLoader(dev_dataset, batch_size=_batch_size,
+                                                     sampler=dev_sampler,
+                                                     num_workers=args.num_workers,
+                                                     collate_fn=batch_list_to_batch_tensors,
+                                                     pin_memory=False)
+
+
     t_total = int(len(train_dataloader) * args.num_train_epochs /
                   args.gradient_accumulation_steps)
     # Prepare model
@@ -174,9 +218,7 @@ def run():
         # if _state_dict == {}, the parameters are randomly initialized
         # if _state_dict == None, the parameters are initialized with bert-init
         _state_dict = {} if args.from_scratch else None
-        model = KGBartForConditionalGeneration(BartConfig(
-            vocab_size=train_dataset.get_vocab_size()
-        ), entity_weight=entity_embedding,
+        model = KGBartForConditionalGeneration.from_pretrained(args.bart_model, entity_weight=entity_embedding,
                                                                relation_weight=relation_embedding)
         global_step = 0
     else:
@@ -339,6 +381,89 @@ def run():
 
             logger.info("***** CUDA.empty_cache() *****")
             torch.cuda.empty_cache()
+
+            if args.do_eval and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
+                model.eval()
+                cur_dev_loss = []
+                with torch.no_grad():
+                    for step, batch in enumerate(tqdm(dev_dataloader, desc="Evaluating", position=0, leave=True)):
+                        batch = [
+                            t.to(device) if t is not None else None for t in batch]
+                        if args.pretraining_KG:
+                            input_ids, input_entity_ids, subword_mask, word_mask, word_subword, decoder_input_ids, decoder_attention_mask, labels = batch
+                        else:
+                            input_ids, input_entity_ids, subword_mask, word_mask, word_subword, decoder_input_ids, decoder_attention_mask, labels = batch
+
+                        loss_output = model(input_ids, input_entity_ids=input_entity_ids, attention_mask=subword_mask,
+                                            word_mask=word_mask, word_subword=word_subword,
+                                            decoder_input_ids=decoder_input_ids,
+                                            decoder_attention_mask=decoder_attention_mask, labels=labels,
+                                            label_smoothing=False)
+
+                        masked_lm_loss = loss_output.loss
+
+                        if n_gpu > 1:  # mean() to average on multi-gpu.
+                            # loss = loss.mean()
+                            masked_lm_loss = masked_lm_loss.mean()
+                            # next_sentence_loss = next_sentence_loss.mean()
+                        loss = masked_lm_loss
+                        cur_dev_loss.append(float(loss.item()))
+                        # logging for each step (i.e., before normalization by args.gradient_accumulation_steps)
+                    dev_loss = sum(cur_dev_loss) / float(len(cur_dev_loss))
+                    print("the epoch {} DEV loss is {}".format(i_epoch, dev_loss))
+                    if best_dev_loss > dev_loss:
+                        best_dev_loss = dev_loss
+                        model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
+                        os.makedirs(args.output_dir+"/best_model", exist_ok=True)
+                        output_model_file = os.path.join(
+                            args.output_dir, "best_model/model.best.bin")
+                        # output_optim_file = os.path.join(
+                        #     args.output_dir, "best_model/optim.best.bin")
+                        # output_schedule_file = os.path.join(
+                        #     args.output_dir, "best_model/sched.best.bin")
+                        torch.save(model_to_save.state_dict(), output_model_file)
+                        # torch.save(optimizer.state_dict(), output_optim_file)
+                        # torch.save(scheduler.state_dict(), output_schedule_file)
+
+                    logger.info(
+                        "** ** * Saving fine-tuned model and optimizer ** ** * ")
+                    model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
+                    output_model_file = os.path.join(
+                        args.output_dir, "model.{0}.bin".format(i_epoch))
+                    output_optim_file = os.path.join(
+                        args.output_dir, "optim.{0}.bin".format(i_epoch))
+                    output_schedule_file = os.path.join(
+                        args.output_dir, "sched.{0}.bin".format(i_epoch))
+                    torch.save(model_to_save.state_dict(), output_model_file)
+                    torch.save(optimizer.state_dict(), output_optim_file)
+                    torch.save(scheduler.state_dict(), output_schedule_file)
+
+                    writer.write("epoch " + str(i_epoch) + "\n")
+                    writer.write("the current eval accuracy is: " + str(dev_loss) + "\n")
+
+                    logger.info("***** CUDA.empty_cache() *****")
+                    torch.cuda.empty_cache()
+
+                    if args.keep_last_epochs > 0:
+                        # remove old epoch checkpoints; checkpoints are sorted in descending order
+                        checkpoints = checkpoint_paths(args.output_dir, pattern=r"model.\d+.bin")
+                        for old_chk in checkpoints[args.keep_last_epochs:]:
+                            if os.path.lexists(old_chk):
+                                os.remove(old_chk)
+
+                        checkpoints = checkpoint_paths(args.output_dir, pattern=r"optim.\d+.bin")
+                        for old_chk in checkpoints[args.keep_last_epochs:]:
+                            if os.path.lexists(old_chk):
+                                os.remove(old_chk)
+
+                        checkpoints = checkpoint_paths(args.output_dir, pattern=r"sched.\d+.bin")
+                        for old_chk in checkpoints[args.keep_last_epochs:]:
+                            if os.path.lexists(old_chk):
+                                os.remove(old_chk)
+
+                logger.info("***** CUDA.empty_cache() *****")
+                torch.cuda.empty_cache()
+
 
 if __name__ == '__main__':
     run()
