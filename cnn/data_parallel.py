@@ -13,8 +13,6 @@ def scatter_imbalance(inputs, target_gpus, dim=0):
     """
     def scatter_map(obj):
         if isinstance(obj, torch.Tensor):
-            if (len(target_gpus) == 2) and (obj.size(dim) == 32):
-                return Scatter.apply(target_gpus, (4, 6, 6, 6), dim, obj)
             if (len(target_gpus) == 4) and (obj.size(dim) == 22):
                 return Scatter.apply(target_gpus, (4, 6, 6, 6), dim, obj)
             if (len(target_gpus) == 4) and (obj.size(dim) == 60):
