@@ -306,9 +306,7 @@ def run():
                 masked_lm_loss = loss_output.loss
                 if n_gpu > 1:  # mean() to average on multi-gpu.
                     # loss = loss.mean()
-                    for m in masked_lm_loss:
-                        print(m)
-                    masked_lm_loss = masked_lm_loss.mean()
+                    masked_lm_loss = masked_lm_loss[0].mean()
                 loss = masked_lm_loss
 
                 # logging for each step (i.e., before normalization by args.gradient_accumulation_steps)
