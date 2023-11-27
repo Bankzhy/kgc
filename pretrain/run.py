@@ -295,9 +295,10 @@ def run():
 
                 input_ids, encoder_attention_mask, input_entity_ids, word_mask, decoder_input_ids, decoder_attention_mask, labels = batch
 
-                loss_output = model(input_ids, input_entity_ids=input_entity_ids, attention_mask=encoder_attention_mask,
+                loss_output = model(input_ids,
+                                    input_entity_ids=input_entity_ids,
+                                    attention_mask=encoder_attention_mask,
                                     word_mask=word_mask,
-
                                     decoder_input_ids=decoder_input_ids,
                                     decoder_attention_mask=decoder_attention_mask, labels=labels,
                                     label_smoothing=False)

@@ -108,7 +108,7 @@ class DataParallelImbalance(DataParallel):
             return self.module(*inputs[0], **kwargs[0])
         replicas = self.replicate(self.module, self.device_ids[:len(inputs)])
         outputs = self.parallel_apply(replicas, inputs, kwargs)
-        return self.gather(outputs, self.output_device)
+        return self.gather(outputs.loss, self.output_device)
 
     def scatter_imbalance(self, inputs, kwargs, device_ids):
         return scatter_kwargs_imbalance(inputs, kwargs, device_ids, dim=self.dim)
