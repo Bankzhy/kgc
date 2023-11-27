@@ -387,15 +387,17 @@ def run():
                 cur_dev_loss = []
                 with torch.no_grad():
                     for step, batch in enumerate(tqdm(dev_dataloader, desc="Evaluating", position=0, leave=True)):
+                        # if args.pretraining_KG:
+                        #     input_ids, input_entity_ids, subword_mask, word_mask, word_subword, decoder_input_ids, decoder_attention_mask, labels = batch
+                        # else:
+                        #     input_ids, input_entity_ids, subword_mask, word_mask, word_subword, decoder_iput_ids, decoder_attention_mask, labels = batch
+
                         batch = [
                             t.to(device) if t is not None else None for t in batch]
-                        if args.pretraining_KG:
-                            input_ids, input_entity_ids, subword_mask, word_mask, word_subword, decoder_input_ids, decoder_attention_mask, labels = batch
-                        else:
-                            input_ids, input_entity_ids, subword_mask, word_mask, word_subword, decoder_input_ids, decoder_attention_mask, labels = batch
+                        input_ids, encoder_attention_mask, input_entity_ids, word_mask, decoder_input_ids, decoder_attention_mask, labels = batch
 
-                        loss_output = model(input_ids, input_entity_ids=input_entity_ids, attention_mask=subword_mask,
-                                            word_mask=word_mask, word_subword=word_subword,
+                        loss_output = model(input_ids, input_entity_ids=input_entity_ids, attention_mask=encoder_attention_mask,
+                                            word_mask=word_mask,
                                             decoder_input_ids=decoder_input_ids,
                                             decoder_attention_mask=decoder_attention_mask, labels=labels,
                                             label_smoothing=False)
@@ -404,7 +406,8 @@ def run():
 
                         if n_gpu > 1:  # mean() to average on multi-gpu.
                             # loss = loss.mean()
-                            masked_lm_loss = masked_lm_loss.mean()
+                            masked_lm_loss = list(masked_lm_loss)
+                            masked_lm_loss = masked_lm_loss[0].mean()
                             # next_sentence_loss = next_sentence_loss.mean()
                         loss = masked_lm_loss
                         cur_dev_loss.append(float(loss.item()))
