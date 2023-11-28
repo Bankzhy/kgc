@@ -302,8 +302,8 @@ def run():
         model = DDP(model, device_ids=[
             args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
     elif n_gpu > 1:
-        model = torch.nn.DataParallel(model)
-        # model = DataParallelImbalance(model)
+        # model = torch.nn.DataParallel(model)
+        model = DataParallelImbalance(model)
 
     logger.info("***** CUDA.empty_cache() *****")
     torch.cuda.empty_cache()
