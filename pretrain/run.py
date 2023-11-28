@@ -214,7 +214,7 @@ def run():
     if args.local_rank not in (-1, 0):
         # Make sure only the first process in distributed training will download model & vocab
         dist.barrier()
-    print(recover_step)
+
     if (recover_step is None) and (args.model_recover_path is None):
         # if _state_dict == {}, the parameters are randomly initialized
         # if _state_dict == None, the parameters are initialized with bert-init
