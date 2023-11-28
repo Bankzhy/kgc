@@ -176,6 +176,10 @@ class PretrainArguments:
         default=5,
     )
 
+    loss_scale: float = field(
+        default=0
+    )
+
 
 def transfer_arg_name(name):
     return '--' + name.replace('_', '-')
