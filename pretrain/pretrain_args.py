@@ -59,7 +59,7 @@ class PretrainArguments:
     )
 
     model_recover_path: str = field(
-        default="output/train_kgbart"
+        default="output/train_kgbart/model.1.bin"
     )
 
     train_batch_size: int = field(
