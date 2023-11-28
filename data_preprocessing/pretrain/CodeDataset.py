@@ -118,7 +118,7 @@ class CodeDataset(Dataset):
             nl_tokens = self.all_docs[index].split()
 
             input_ids, encoder_attention_mask = self.code_tokenizer.encode_sequence(code_tokens, is_pre_tokenized=True, max_len=self.args.input_max_len)
-            input_entity_ids = self.kg_matcher.get_entity_ids(code_tokens)
+            input_entity_ids = self.get_entity_ids(code_tokens)
             ie_max_len = self.args.input_max_len - 2
             if len(input_entity_ids) < ie_max_len:
                 n_pad = self.args.input_max_len - len(input_entity_ids) - 1
