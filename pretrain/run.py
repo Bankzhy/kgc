@@ -157,7 +157,7 @@ def run():
             logger=logger,
             entity_dict=entity_dict,
             dataset_type='train',
-            task=enums.TASK_NSP,
+            task=enums.TASK_MASS,
             language='java',
         )
         if args.local_rank == -1:
@@ -180,7 +180,7 @@ def run():
             logger=logger,
             entity_dict=entity_dict,
             dataset_type='valid',
-            task=enums.TASK_NSP,
+            task=enums.TASK_MASS,
             language='java',
         )
         if args.local_rank == -1:
@@ -236,7 +236,7 @@ def run():
             model_recover = torch.load(
                 args.model_recover_path, map_location='cpu')
             global_step = 0
-        model = KGBartForConditionalGeneration.from_pretrained(BartConfig(), state_dict=model_recover,
+        model = KGBartForConditionalGeneration.from_pretrained(args.model_recover_path, state_dict=model_recover,
                                                                entity_weight=entity_embedding,
                                                                relation_weight=relation_embedding)
 
