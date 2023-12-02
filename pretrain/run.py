@@ -219,7 +219,7 @@ def run():
         # if _state_dict == {}, the parameters are randomly initialized
         # if _state_dict == None, the parameters are initialized with bert-init
         _state_dict = {} if args.from_scratch else None
-        model = KGBartForConditionalGeneration.from_pretrained(args.bart_model, entity_weight=entity_embedding,
+        model = KGBartForConditionalGeneration(config=BartConfig(), entity_weight=entity_embedding,
                                                                relation_weight=relation_embedding)
         global_step = 0
     else:
@@ -236,7 +236,7 @@ def run():
             model_recover = torch.load(
                 args.model_recover_path, map_location='cpu')
             global_step = 0
-        model = KGBartForConditionalGeneration.from_pretrained(args.bart_model, state_dict=model_recover,
+        model = KGBartForConditionalGeneration.from_pretrained(BartConfig(), state_dict=model_recover,
                                                                entity_weight=entity_embedding,
                                                                relation_weight=relation_embedding)
 
