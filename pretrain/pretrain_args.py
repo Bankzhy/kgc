@@ -63,10 +63,10 @@ class PretrainArguments:
     )
 
     train_batch_size: int = field(
-        default=8,
+        default=32,
     )
     eval_batch_size: int = field(
-        default=16,
+        default=32,
     )
 
     num_workers: int = field(
@@ -74,7 +74,7 @@ class PretrainArguments:
     )
 
     num_train_epochs: float = field(
-        default=2
+        default=1
     )
 
     trained_vocab: str = field(
