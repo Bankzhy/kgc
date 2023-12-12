@@ -157,7 +157,7 @@ def run():
             logger=logger,
             entity_dict=entity_dict,
             dataset_type='train',
-            task=enums.TASK_NSP,
+            task=enums.TASK_MASS,
             language='java',
         )
         if args.local_rank == -1:
@@ -180,7 +180,7 @@ def run():
             logger=logger,
             entity_dict=entity_dict,
             dataset_type='valid',
-            task=enums.TASK_NSP,
+            task=enums.TASK_MASS,
             language='java',
         )
         if args.local_rank == -1:
