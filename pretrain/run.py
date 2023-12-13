@@ -443,7 +443,8 @@ def run():
                     torch.save(optimizer.state_dict(), output_optim_file)
                     torch.save(scheduler.state_dict(), output_schedule_file)
 
-                    model_to_save.save_pretrained(args.output_dir)
+                    pretrained_path = os.path.join(args.output_dir, "pretrained_{0}".format(i_epoch))
+                    model_to_save.save_pretrained(pretrained_path)
 
                     writer.write("epoch " + str(i_epoch) + "\n")
                     writer.write("the current eval accuracy is: " + str(dev_loss) + "\n")
@@ -467,6 +468,7 @@ def run():
                         for old_chk in checkpoints[args.keep_last_epochs:]:
                             if os.path.lexists(old_chk):
                                 os.remove(old_chk)
+
 
                 logger.info("***** CUDA.empty_cache() *****")
                 torch.cuda.empty_cache()
