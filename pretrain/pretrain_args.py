@@ -63,7 +63,7 @@ class PretrainArguments:
     )
 
     train_batch_size: int = field(
-        default=64,
+        default=48,
     )
     eval_batch_size: int = field(
         default=16,
