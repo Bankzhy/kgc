@@ -285,7 +285,6 @@ class PretrainedConfig(object):
             assert unused_kwargs == {'foo': False}
 
         """
-        print(pretrained_model_name_or_path)
         config_dict, kwargs = cls.get_config_dict(pretrained_model_name_or_path, **kwargs)
         return cls.from_dict(config_dict, **kwargs)
 

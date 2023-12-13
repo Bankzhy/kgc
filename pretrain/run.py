@@ -236,7 +236,7 @@ def run():
             model_recover = torch.load(
                 args.model_recover_path, map_location='cpu')
             global_step = 0
-        model_recover_path = os.path.join(args.output_dir, "model.{0}.bin".format(recover_step))
+        model_recover_path = args.output_dir
         model = KGBartForConditionalGeneration.from_pretrained(model_recover_path, state_dict=model_recover,
                                                                entity_weight=entity_embedding,
                                                                relation_weight=relation_embedding)
