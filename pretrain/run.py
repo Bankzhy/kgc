@@ -443,7 +443,7 @@ def run():
                     torch.save(optimizer.state_dict(), output_optim_file)
                     torch.save(scheduler.state_dict(), output_schedule_file)
 
-                    model.save_pretrained(args.output_dir)
+                    model_to_save.save_pretrained(args.output_dir)
 
                     writer.write("epoch " + str(i_epoch) + "\n")
                     writer.write("the current eval accuracy is: " + str(dev_loss) + "\n")
