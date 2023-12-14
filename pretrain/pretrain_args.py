@@ -74,7 +74,7 @@ class PretrainArguments:
     )
 
     num_train_epochs: float = field(
-        default=5
+        default=10
     )
 
     trained_vocab: str = field(
