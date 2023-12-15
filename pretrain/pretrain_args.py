@@ -77,6 +77,10 @@ class PretrainArguments:
         default=10
     )
 
+    last_pretrained: int = field(
+        default=6
+    )
+
     trained_vocab: str = field(
         default=r"../dataset/tokeniazers",
         metadata={'help': "The output directory where the log will be written."}
