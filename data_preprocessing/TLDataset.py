@@ -4,7 +4,7 @@ import sys
 import random
 import re
 from torch.utils.data.dataset import Dataset
-from pretrain.vocab import load_vocab, init_vocab, Vocab
+from data_preprocessing.pretrain.vocab import load_vocab, init_vocab, Vocab
 from util import batch_list_to_batch_tensors
 
 
