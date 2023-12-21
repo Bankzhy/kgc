@@ -28,13 +28,9 @@ import glob
 from torch.utils.data import RandomSampler, DistributedSampler
 from tqdm import tqdm
 
-import enums
-from data_preprocessing.pretrain.CodeDataset import CodeDataset
-from data_preprocessing.pretrain.vocab import load_vocab, init_vocab
 from model import KGBartForConditionalGeneration
 from model.configuration_bart import BartConfig
 from cnn.data_parallel import DataParallelImbalance
-from pretrain.pretrain_args import add_pretrain_args
 from model.optimization import AdamW, get_linear_schedule_with_warmup
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
