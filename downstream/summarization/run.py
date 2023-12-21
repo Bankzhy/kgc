@@ -9,9 +9,9 @@ curPath = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
 sys.path.append(curPath)
 print("当前的工作目录：",os.getcwd())
 print("python搜索模块的路径集合",sys.path)
-from downstream.summarization import bleu
-from downstream.summarization.TLDataset import TLDataset
-from downstream.summarization.summarization_args import add_summary_args
+import bleu
+import TLDataset
+from summarization_args import add_summary_args
 import argparse
 import json
 import math
