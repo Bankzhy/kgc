@@ -8,7 +8,7 @@ sys.path.append('../..')
 print("当前的工作目录：",os.getcwd())
 print("python搜索模块的路径集合",sys.path)
 import bleu
-from data_preprocessing import TLDataset
+from data_preprocessing.TLDataset import TLDataset
 from summarization_args import add_summary_args
 import argparse
 import json
@@ -193,7 +193,7 @@ def run():
                                                      pin_memory=False)
 
     if args.do_test:
-        print("Loading Dev Dataset", args.dataset_dir)
+        print("Loading Test Dataset", args.dataset_dir)
         test_dataset = TLDataset(
             args=args,
             logger=logger,
