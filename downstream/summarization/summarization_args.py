@@ -63,13 +63,13 @@ class PretrainArguments:
     )
 
     train_batch_size: int = field(
-        default=4,
+        default=48,
     )
     eval_batch_size: int = field(
         default=16,
     )
     test_batch_size: int = field(
-        default=4,
+        default=16,
     )
 
     num_workers: int = field(
