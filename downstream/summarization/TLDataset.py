@@ -14,7 +14,7 @@ from util import batch_list_to_batch_tensors
 
 class TLDataset(Dataset):
 
-    def __init__(self, args, logger, entity_dict, task='mass', language=None):
+    def __init__(self, args, logger, entity_dict, dataset_type, language=None):
         """
         :param path:dataset dir path
         :param task: [mass(Masked Span Prediction), nsp(Natural Language Prediction)]
@@ -23,11 +23,15 @@ class TLDataset(Dataset):
         super(TLDataset, self).__init__()
         self.args = args
         self.paths = {}
-        self.task = task
         self.language = language
         self.logger = logger
-        self.paths, self.languages, self.all_sources, self.all_codes, self.all_docs = load_dataset_from_dir(dataset_dir=args.dataset_dir)
+
+        load_path = os.path.join(args.dataset_dir, dataset_type)
+        self.all_codes, self.all_docs = self.load_tl_dataset_from_dir(dataset_dir=load_path)
         self.code_tokenizer, self.nl_tokenizer = self.get_tokenizers()
+
+        self.all_codes = random.sample(self.all_codes, int(len(self.all_codes) / 100))
+        self.all_docs = random.sample(self.all_docs, int(len(self.all_docs) / 100))
 
         # self.kg_matcher = KGMatcher(
         #     entity2id = entity2id,
@@ -81,57 +85,30 @@ class TLDataset(Dataset):
         return input_entity_ids
 
     def __getitem__(self, index):
-        if self.task == enums.TASK_MASS:
-            code_tokens = self.all_codes[index].split()
-            mask_len = int(self.args.mass_mask_ratio * len(code_tokens))
-            mask_start = random.randint(0, len(code_tokens) - mask_len)
-            mask_tokens = code_tokens[mask_start: mask_start + mask_len]
-            input_tokens = code_tokens[:mask_start] + [Vocab.MSK_TOKEN] + code_tokens[mask_start + mask_len:]
+        code_tokens = self.all_codes[index].split()
+        nl_tokens = self.all_docs[index].split()
 
-            # input_ids, input_entity_ids, subword_mask, word_mask, word_subword, decoder_input_ids, decoder_attention_mask, labels
-            input_ids, encoder_attention_mask = self.code_tokenizer.encode_sequence(input_tokens, is_pre_tokenized=True, max_len=self.args.input_max_len)
+        input_ids, encoder_attention_mask = self.code_tokenizer.encode_sequence(code_tokens, is_pre_tokenized=True,
+                                                                                max_len=self.args.input_max_len)
+        input_entity_ids = self.get_entity_ids(code_tokens)
+        ie_max_len = self.args.input_max_len - 2
+        if len(input_entity_ids) < ie_max_len:
+            n_pad = self.args.input_max_len - len(input_entity_ids) - 1
+            word_mask = [1] * (self.args.input_max_len - n_pad)
+            word_mask.extend([0] * n_pad)
+            input_entity_ids = [1] + input_entity_ids + [2]
+            input_entity_ids.extend([0] * (n_pad - 1))
+        else:
+            input_entity_ids = input_entity_ids[:ie_max_len]
+            input_entity_ids = [1] + input_entity_ids + [2]
+            word_mask = [1] * len(input_entity_ids)
 
-            input_entity_ids = self.get_entity_ids(input_tokens)
-            ie_max_len = self.args.input_max_len -2
-            if len(input_entity_ids) < ie_max_len:
-                n_pad = self.args.input_max_len - len(input_entity_ids) - 1
-                word_mask = [1] * (self.args.input_max_len - n_pad)
-                word_mask.extend([0] * n_pad)
-                input_entity_ids = [1] + input_entity_ids + [2]
-                input_entity_ids.extend([0] * (n_pad - 1))
-            else:
-                input_entity_ids = input_entity_ids[:ie_max_len]
-                input_entity_ids = [1] + input_entity_ids + [2]
-                word_mask = [1] * len(input_entity_ids)
+        decoder_input_ids, decoder_attention_mask = self.nl_tokenizer.encode_sequence(nl_tokens, is_pre_tokenized=True,
+                                                                                      max_len=self.args.output_max_len)
+        labels, labels_mask = self.nl_tokenizer.encode_sequence(nl_tokens, is_pre_tokenized=True,
+                                                                max_len=self.args.output_max_len)
 
-            decoder_input_ids, decoder_attention_mask = self.code_tokenizer.encode_sequence(code_tokens, is_pre_tokenized=True, max_len=self.args.output_max_len)
-            labels, labels_mask = self.code_tokenizer.encode_sequence(code_tokens, is_pre_tokenized=True, max_len=self.args.output_max_len)
-
-            return input_ids, encoder_attention_mask, input_entity_ids, word_mask, decoder_input_ids, decoder_attention_mask, labels
-
-            # return ' '.join(input_tokens), self.asts[index], self.names[index], ' '.join(mask_tokens)
-        elif self.task == enums.TASK_NSP:
-            code_tokens = self.all_codes[index].split()
-            nl_tokens = self.all_docs[index].split()
-
-            input_ids, encoder_attention_mask = self.code_tokenizer.encode_sequence(code_tokens, is_pre_tokenized=True, max_len=self.args.input_max_len)
-            input_entity_ids = self.kg_matcher.get_entity_ids(code_tokens)
-            ie_max_len = self.args.input_max_len - 2
-            if len(input_entity_ids) < ie_max_len:
-                n_pad = self.args.input_max_len - len(input_entity_ids) - 1
-                word_mask = [1] * (self.args.input_max_len - n_pad)
-                word_mask.extend([0] * n_pad)
-                input_entity_ids = [1] + input_entity_ids + [2]
-                input_entity_ids.extend([0] * (n_pad - 1))
-            else:
-                input_entity_ids = input_entity_ids[:ie_max_len]
-                input_entity_ids = [1] + input_entity_ids + [2]
-                word_mask = [1] * len(input_entity_ids)
-
-            decoder_input_ids, decoder_attention_mask = self.nl_tokenizer.encode_sequence(nl_tokens, is_pre_tokenized=True, max_len=self.args.output_max_len)
-            labels, labels_mask = self.nl_tokenizer.encode_sequence(nl_tokens, is_pre_tokenized=True, max_len=self.args.output_max_len)
-
-            return input_ids, encoder_attention_mask, input_entity_ids, word_mask, decoder_input_ids, decoder_attention_mask, labels
+        return input_ids, encoder_attention_mask, input_entity_ids, word_mask, decoder_input_ids, decoder_attention_mask, labels
 
     def __iter__(self):  # iterator to load data
         for __ in range(math.ceil(len(self.ex_list) / float(self.batch_size))):
@@ -183,3 +160,44 @@ class TLDataset(Dataset):
 
     def get_vocab_size(self):
         return len(self.code_tokenizer)+len(self.nl_tokenizer)
+
+    def load_tl_dataset_from_dir(self, dataset_dir):
+        codes_dict = {}
+        all_codes = []
+        all_docs = []
+
+        tag = dataset_dir.split('/')
+        tag = tag[len(tag) - 1]
+        if tag == 'train':
+            code_tokn_f = os.path.join(dataset_dir, "train.token.code")
+            nl_tokn_f = os.path.join(dataset_dir, "train.token.nl")
+        elif tag == 'valid':
+            code_tokn_f = os.path.join(dataset_dir, "valid.token.code")
+            nl_tokn_f = os.path.join(dataset_dir, "valid.token.nl")
+        else:
+            code_tokn_f = os.path.join(dataset_dir, "test.token.code")
+            nl_tokn_f = os.path.join(dataset_dir, "test.token.nl")
+
+        with open(code_tokn_f, encoding="utf-8") as f:
+            datas = f.readlines()
+            for data in datas:
+                d_l = data.split("	")
+                idx = d_l[0]
+                code = d_l[1]
+                codes_dict[idx] = code
+
+        with open(nl_tokn_f, encoding="utf-8") as f:
+            datas = f.readlines()
+            for data in datas:
+                d_l = data.split("	")
+                idx = d_l[0]
+                nl = d_l[1]
+                code = codes_dict[idx]
+
+                code = code.replace('\n', '')
+                nl = nl.replace('\n', '')
+
+                all_codes.append(code)
+                all_docs.append(nl)
+
+        return all_codes, all_docs

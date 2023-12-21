@@ -33,9 +33,9 @@ class CodeDataset(Dataset):
         rel2id = os.path.join(args.kg_path, 'relation2id.txt')
         train2id = os.path.join(args.kg_path, 'train2id.txt')
 
-        # self.all_sources = random.sample(self.all_sources, int(len(self.all_sources) / 100))
-        # self.all_codes = random.sample(self.all_codes, int(len(self.all_codes) / 100))
-        # self.all_docs = random.sample(self.all_docs, int(len(self.all_docs) / 100))
+        self.all_sources = random.sample(self.all_sources, int(len(self.all_sources) / 1000))
+        self.all_codes = random.sample(self.all_codes, int(len(self.all_codes) / 1000))
+        self.all_docs = random.sample(self.all_docs, int(len(self.all_docs) / 1000))
 
 
         self.entity_dict = entity_dict

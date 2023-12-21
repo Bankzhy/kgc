@@ -1,42 +1,56 @@
-"""BERT finetuning runner."""
+import re
+import sys
+import os
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from torch import nn
 
+from downstream.summarization import bleu
+from downstream.summarization.TLDataset import TLDataset
+from downstream.summarization.summarization_args import add_summary_args
+
+curPath = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
+sys.path.append(curPath)
+print("当前的工作目录：",os.getcwd())
+print("python搜索模块的路径集合",sys.path)
+import argparse
+import json
+import math
 import os
 import logging
-import glob
-import math
-import json
-import argparse
-import random
-from pathlib import Path
-from tqdm import tqdm, trange
-import numpy as np
-import torch
-from torch.utils.data import RandomSampler
-from torch.utils.data.distributed import DistributedSampler
-import os
-import sys
-
-os.chdir("../")
-print("Current Working Directory ", os.getcwd())
-from cnn.data_parallel import DataParallelImbalance
-import seq2seq_loader as seq2seq_loader
-# from model.tokenization_bart import MBartTokenizer, BartTokenizer
-from model.modeling_kgbart import KGBartForConditionalGeneration
-from model.optimization import AdamW, get_linear_schedule_with_warmup
-import torch.distributed as dist
-
-import re
 import pickle
+from pathlib import Path
+
+import torch.distributed as dist
+import torch
+import random
+import numpy as np
+import glob
+from torch.utils.data import RandomSampler, DistributedSampler
+from tqdm import tqdm
+
+import enums
+from data_preprocessing.pretrain.CodeDataset import CodeDataset
+from data_preprocessing.pretrain.vocab import load_vocab, init_vocab
+from model import KGBartForConditionalGeneration
+from model.configuration_bart import BartConfig
+from cnn.data_parallel import DataParallelImbalance
+from pretrain.pretrain_args import add_pretrain_args
+from model.optimization import AdamW, get_linear_schedule_with_warmup
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
-
+def batch_list_to_batch_tensors(batch):
+    batch_tensors = []
+    for x in zip(*batch):
+        if x[0] is None:
+            batch_tensors.append(None)
+        elif isinstance(x[0], torch.Tensor):
+            batch_tensors.append(torch.stack(x))
+        else:
+            batch_tensors.append(torch.tensor(x, dtype=torch.long))
+    return batch_tensors
 
 def _get_max_epoch_model(output_dir):
     fn_model_list = glob.glob(os.path.join(output_dir, "model.*.bin"))
@@ -52,181 +66,42 @@ def _get_max_epoch_model(output_dir):
     else:
         return None
 
+def trange(*args, **kwargs):
+    """Shortcut for tqdm(range(*args), **kwargs)."""
+    return tqdm(range(*args), **kwargs)
 
-def main():
+def load_entity_dict(args):
+    dict_path = os.path.join(args.kg_path, 'entity_dict.txt')
+    dict = {}
+    with open(dict_path, 'r', encoding='utf8') as f:
+        lines = f.readlines()
+        for line in lines:
+            ll = line.split(";")
+            idx = ll[1].replace("\n", "")
+            idx = int(idx)
+            dict[ll[0]] = idx
+    return dict
+def checkpoint_paths(path, pattern=r"model(\d+)\.pt"):
+    """Retrieves all checkpoints found in `path` directory.
+
+    Checkpoints are identified by matching filename to the specified pattern. If
+    the pattern contains groups, the result will be sorted by the first group in
+    descending order.
+    """
+    pt_regexp = re.compile(pattern)
+    files = os.listdir(path)
+
+    entries = []
+    for i, f in enumerate(files):
+        m = pt_regexp.fullmatch(f)
+        if m is not None:
+            idx = float(m.group(1)) if len(m.groups()) > 0 else int(f.split(".")[1])
+            entries.append((idx, m.group(0)))
+    return [os.path.join(path, x[1]) for x in sorted(entries, reverse=True)]
+
+def run():
     parser = argparse.ArgumentParser()
-
-    # Required parameters
-    parser.add_argument("--data_dir",
-                        default="dataset/tl",
-                        type=str,
-                        help="The input data dir. Should contain the .tsv files (or other data files) for the task.")
-    parser.add_argument("--src_file", default=None, type=str,
-                        help="The input data file name.")
-    parser.add_argument("--tgt_file", default=None, type=str,
-                        help="The output data file name.")
-    parser.add_argument("--bart_model", default="facebook/bart-large", type=str,
-                        help="Bert pre-trained model selected in the list: bert-base-uncased, "
-                             "bert-large-uncased, bert-base-cased, bert-base-multilingual, bert-base-chinese.")
-    parser.add_argument("--config_path", default=None, type=str,
-                        help="Bert config file path.")
-    parser.add_argument("--output_dir",
-                        default="output/train_kgbart",
-                        type=str,
-                        help="The output directory where the model predictions and checkpoints will be written.")
-    parser.add_argument("--log_dir",
-                        default="log/train_kgbart",
-                        type=str,
-                        help="The output directory where the log will be written.")
-    parser.add_argument("--model_recover_path",
-                        default=None,
-                        type=str,
-                        help="The file of fine-tuned pretraining model.")
-    parser.add_argument("--optim_recover_path",
-                        default=None,
-                        type=str,
-                        help="The file of pretraining optimizer.")
-    # Other parameters
-    parser.add_argument("--max_seq_length",
-                        default=64,
-                        type=int,
-                        help="The maximum total input sequence length after WordPiece tokenization. \n"
-                             "Sequences longer than this will be truncated, and sequences shorter \n"
-                             "than this will be padded.")
-    parser.add_argument("--do_train",
-                        default=True,
-                        type=bool,
-                        help="Whether to run training.")
-    parser.add_argument("--do_eval",
-                        default=True,
-                        type=bool,
-                        help="Whether to run eval on the dev set.")
-    parser.add_argument("--do_lower_case",
-                        default=False, type=bool,
-                        help="Set this flag if you are using an uncased model.")
-    parser.add_argument("--train_batch_size",
-                        default=32,
-                        type=int,
-                        help="Total batch size for training.")
-    parser.add_argument("--eval_batch_size",
-                        default=64,
-                        type=int,
-                        help="Total batch size for eval.")
-    parser.add_argument("--learning_rate", default=1e-5, type=float,
-                        help="The initial learning rate for Adam.")
-    parser.add_argument("--label_smoothing", default=0.1, type=float,
-                        help="The initial learning rate for Adam.")
-    parser.add_argument("--weight_decay",
-                        default=0.01,
-                        type=float,
-                        help="The weight decay rate for Adam.")
-    parser.add_argument("--finetune_decay",
-                        action='store_true',
-                        help="Weight decay to the original weights.")
-    parser.add_argument("--num_train_epochs",
-                        default=10.0,
-                        type=float,
-                        help="Total number of training epochs to perform.")
-    parser.add_argument("--warmup_proportion",
-                        default=0.1,
-                        type=float,
-                        help="Proportion of training to perform linear learning rate warmup for. "
-                             "E.g., 0.1 = 10%% of training.")
-    parser.add_argument("--hidden_dropout_prob", default=0.1, type=float,
-                        help="Dropout rate for hidden states.")
-    parser.add_argument("--attention_probs_dropout_prob", default=0.1, type=float,
-                        help="Dropout rate for attention probabilities.")
-    parser.add_argument("--no_cuda",
-                        action='store_true',
-                        help="Whether not to use CUDA when available")
-    parser.add_argument("--local_rank",
-                        type=int,
-                        default=-1,
-                        help="local_rank for distributed training on gpus")
-    parser.add_argument('--seed',
-                        type=int,
-                        default=42,
-                        help="random seed for initialization")
-    parser.add_argument('--gradient_accumulation_steps',
-                        type=int,
-                        default=6,
-                        help="Number of updates steps to accumulate before performing a backward/update pass.")
-    parser.add_argument('--fp16', default=True, type=bool,
-                        help="Whether to use 16-bit float precision instead of 32-bit")
-    parser.add_argument('--fp32_embedding', action='store_true',
-                        help="Whether to use 32-bit float precision instead of 16-bit for embeddings")
-    parser.add_argument('--loss_scale', type=float, default=0,
-                        help="Loss scaling to improve fp16 numeric stability. Only used when fp16 set to True.\n"
-                             "0 (default value): dynamic loss scaling.\n"
-                             "Positive power of 2: static loss scaling value.\n")
-    parser.add_argument('--amp', default=True, type=bool,
-                        help="Whether to use amp for fp16")
-    parser.add_argument('--from_scratch', action='store_true',
-                        help="Initialize parameters with random values (i.e., training from scratch).")
-    parser.add_argument('--new_segment_ids', action='store_true',
-                        help="Use new segment ids for bi-uni-directional LM.")
-    parser.add_argument('--new_pos_ids', action='store_true',
-                        help="Use new position ids for LMs.")
-    parser.add_argument('--tokenized_input', action='store_true',
-                        help="Whether the input is tokenized.")
-    parser.add_argument('--max_len_a', type=int, default=64,
-                        help="Truncate_config: maximum length of segment A.")
-    parser.add_argument('--max_len_b', type=int, default=64,
-                        help="Truncate_config: maximum length of segment B.")
-    parser.add_argument('--trunc_seg', default='',
-                        help="Truncate_config: first truncate segment A/B (option: a, b).")
-    parser.add_argument('--always_truncate_tail', default=True, type=bool,
-                        help="Truncate_config: Whether we should always truncate tail.")
-    parser.add_argument("--mask_prob", default=0.70, type=float,
-                        help="Number of prediction is sometimes less than max_pred when sequence is short.")
-    parser.add_argument("--mask_prob_eos", default=0, type=float,
-                        help="Number of prediction is sometimes less than max_pred when sequence is short.")
-    parser.add_argument('--max_pred', type=int, default=30,
-                        help="Max tokens of prediction.")
-    parser.add_argument("--num_workers", default=5, type=int,
-                        help="Number of workers for the data loader.")
-
-    parser.add_argument('--mask_source_words', action='store_true',
-                        help="Whether to mask source words for training")
-    parser.add_argument('--skipgram_prb', type=float, default=0.0,
-                        help='prob of ngram mask')
-    parser.add_argument('--skipgram_size', type=int, default=1,
-                        help='the max size of ngram mask')
-    parser.add_argument('--mask_whole_word', action='store_true',
-                        help="Whether masking a whole word.")
-    parser.add_argument('--do_l2r_training', action='store_true',
-                        help="Whether to do left to right training")
-    parser.add_argument('--pretraining_KG', action='store_true',
-                        help="Whether to pre-training KG. ")
-    parser.add_argument('--max_position_embeddings', type=int, default=64,
-                        help="max position embeddings")
-    parser.add_argument('--relax_projection', action='store_true',
-                        help="Use different projection layers for tasks.")
-    parser.add_argument('--ffn_type', default=0, type=int,
-                        help="0: default mlp; 1: W((Wx+b) elem_prod x);")
-    parser.add_argument('--num_qkv', default=0, type=int,
-                        help="Number of different <Q,K,V>.")
-    parser.add_argument('--seg_emb', action='store_true',
-                        help="Using segment embedding for self-attention.")
-    parser.add_argument('--s2s_special_token', default=False, type=bool,
-                        help="New special tokens ([S2S_SEP]/[S2S_CLS]) of S2S.")
-    parser.add_argument('--s2s_add_segment', default=False, type=bool,
-                        help="Additional segmental for the encoder of S2S.")
-    parser.add_argument('--s2s_share_segment', default=False, type=bool,
-                        help="Sharing segment embeddings for the encoder of S2S (used with --s2s_add_segment).")
-    parser.add_argument('--pos_shift', action='store_true',
-                        help="Using position shift for fine-tuning.")
-    parser.add_argument("--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer.")
-    parser.add_argument("--max_grad_norm", default=1.0, type=float, help="Max gradient norm.")
-    parser.add_argument(
-        "--fp16_opt_level",
-        type=str,
-        default="O1",
-        help="For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3']."
-             "See details at https://nvidia.github.io/apex/amp.html",
-    )
-    parser.add_argument("--warmup_steps", default=0, type=int, help="Linear warmup over warmup_steps.")
-    parser.add_argument("--keep_last_epochs", default=5, type=int, help="Keep the last few epochs.")
+    add_summary_args(parser)
 
     args = parser.parse_args()
 
@@ -237,6 +112,8 @@ def main():
         '[PT_OUTPUT_DIR]', os.getenv('PT_OUTPUT_DIR', ''))
     args.log_dir = args.log_dir.replace(
         '[PT_OUTPUT_DIR]', os.getenv('PT_OUTPUT_DIR', ''))
+
+    entity_dict = load_entity_dict(args)
 
     os.makedirs(args.output_dir, exist_ok=True)
     os.makedirs(args.log_dir, exist_ok=True)
@@ -269,114 +146,46 @@ def main():
     if n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
 
-    if not args.do_train and not args.do_eval:
+    if not args.do_train and not args.do_eval and not args.do_test:
         raise ValueError(
             "At least one of `do_train` or `do_eval` must be True.")
 
     if args.local_rank not in (-1, 0):
         # Make sure only the first process in distributed training will download model & vocab
         dist.barrier()
-    tokenizer = BartTokenizer.from_pretrained(
-        args.bart_model, do_lower_case=args.do_lower_case)
-    # if args.max_position_embeddings:
-    #     tokenizer.max_len = args.max_position_embeddings
-    data_tokenizer = tokenizer  # WhitespaceTokenizer() if args.tokenized_input else
-    if args.local_rank == 0:
-        dist.barrier()
-
-    bi_uni_pipeline = [
-        seq2seq_loader.Preprocess4Seq2seq(list(tokenizer.encoder.keys()), tokenizer.convert_tokens_to_ids,
-                                          args.max_seq_length, new_segment_ids=args.new_segment_ids,
-                                          truncate_config={'max_len_a': args.max_len_a,
-                                                           'max_len_b': args.max_len_b,
-                                                           'trunc_seg': args.trunc_seg,
-                                                           'always_truncate_tail': args.always_truncate_tail},
-                                          mode="s2s", pretraining_KG=args.pretraining_KG, num_qkv=args.num_qkv,
-                                          s2s_special_token=args.s2s_special_token,
-                                          s2s_add_segment=args.s2s_add_segment,
-                                          s2s_share_segment=args.s2s_share_segment,
-                                          pos_shift=args.pos_shift)]
-    file_oracle = None
-    # entity_id = os.path.join(
-    #     args.data_dir, args.tgt_file if args.tgt_file else 'CommonGen_KG/commongen_entity2id.txt')
-    # entity_embedding_path = os.path.join(
-    #     args.data_dir, args.tgt_file if args.tgt_file else 'CommonGen_KG/commongen_ent_embeddings')
-    entity_id = r"G:\research\clone\examples\KG-BART\dataset\graph_embedding\commongen_entity2id.txt"
-    entity_embedding_path = r"G:\research\clone\examples\KG-BART\dataset\graph_embedding\commongen_ent_embeddings"
-
-    # relation_id = os.path.join(
-    #     args.data_dir, args.tgt_file if args.tgt_file else 'CommonGen_KG/commongen_relation2id.txt')
-    # relation_embedding_path = os.path.join(
-    #     args.data_dir, args.tgt_file if args.tgt_file else 'CommonGen_KG/commongen_rel_embeddings')
-
-    relation_id = r"G:\research\clone\examples\KG-BART\dataset\graph_embedding\commongen_relation2id.txt"
-    relation_embedding_path = r"G:\research\clone\examples\KG-BART\dataset\graph_embedding\commongen_rel_embeddings"
-
-
-    entity_embedding = np.array(pickle.load(open(entity_embedding_path, "rb")))
-    entity_embedding = np.array(list(np.zeros((4, 1024))) + list(entity_embedding))
-    relation_embedding = np.array(pickle.load(open(relation_embedding_path, "rb")))
 
     if args.do_train:
-        print("Loading Train Dataset", args.data_dir)
-        # bi_uni_pipeline = [seq2seq_loader.Preprocess4Seq2seq(args.max_pred, args.mask_prob, list(tokenizer.vocab.keys(
-        # )), tokenizer.convert_tokens_to_ids, args.max_seq_length, new_segment_ids=args.new_segment_ids, truncate_config={'max_len_a': args.max_len_a, 'max_len_b': args.max_len_b, 'trunc_seg': args.trunc_seg, 'always_truncate_tail': args.always_truncate_tail}, mask_source_words=args.mask_source_words, skipgram_prb=args.skipgram_prb, skipgram_size=args.skipgram_size, mask_whole_word=args.mask_whole_word, mode="s2s", has_oracle=args.pretraining_KG, num_qkv=args.num_qkv, s2s_special_token=args.s2s_special_token, s2s_add_segment=args.s2s_add_segment, s2s_share_segment=args.s2s_share_segment, pos_shift=args.pos_shift)]
-        # file_oracle = None
-        # if args.pretraining_KG:
-        #     file_oracle = os.path.join(args.data_dir, 'commongen.train.oracle')
-        # # fn_src = os.path.join(
-        # #     args.data_dir, args.src_file if args.src_file else 'commongen.train.src_new.txt')
-        #
-        # fn_src = r"G:\research\clone\examples\KG-BART\dataset\commongen_data\commongen\commongen.train.src_new.txt"
-        #
-        # # fn_tgt = os.path.join(
-        # #     args.data_dir, args.tgt_file if args.tgt_file else 'commongen.train.tgt.txt')
-        #
-        # fn_tgt = r"G:\research\clone\examples\KG-BART\dataset\commongen_data\commongen\commongen.train.tgt.txt"
-        #
-        # # fn_onehop = os.path.join(
-        # #     args.data_dir, args.tgt_file if args.tgt_file else 'commongen.train.onehop_5.txt')
-        #
-        # fn_onehop = r"G:\research\clone\examples\KG-BART\dataset\concept_graph\commongen.train.onehop_5.txt"
-
-        # train_dataset = seq2seq_loader.Seq2SeqDataset(
-        #     fn_src, fn_tgt, entity_id, relation_id, fn_onehop, args.train_batch_size, data_tokenizer,
-        #     args.max_seq_length, bi_uni_pipeline=bi_uni_pipeline)
-
-
-
+        print("Loading Train Dataset", args.dataset_dir)
+        train_dataset = TLDataset(
+            args=args,
+            logger=logger,
+            entity_dict=entity_dict,
+            dataset_type='train',
+            language='java',
+        )
         if args.local_rank == -1:
             train_sampler = RandomSampler(train_dataset, replacement=False)
             _batch_size = args.train_batch_size
         else:
             train_sampler = DistributedSampler(train_dataset)
             _batch_size = args.train_batch_size // dist.get_world_size()
+
         train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=_batch_size, sampler=train_sampler,
                                                        num_workers=args.num_workers,
-                                                       collate_fn=seq2seq_loader.batch_list_to_batch_tensors,
+                                                       collate_fn=batch_list_to_batch_tensors,
                                                        pin_memory=False)
+        t_total = int(len(train_dataloader) * args.num_train_epochs /
+                      args.gradient_accumulation_steps)
+
     if args.do_eval:
-        print("Loading Dev Dataset", args.data_dir)
-        if args.pretraining_KG:
-            file_oracle = os.path.join(args.data_dir, 'commongen.dev.oracle')
-        # fn_src = os.path.join(
-        #     args.data_dir, args.src_file if args.src_file else 'commongen.dev.src_new.txt')
-
-        fn_src = r"G:\research\clone\examples\KG-BART\dataset\commongen_data\commongen\commongen.train.src_new.txt"
-
-        # fn_tgt = os.path.join(
-        #     args.data_dir, args.tgt_file if args.tgt_file else 'commongen.dev.tgt.txt')
-
-        fn_tgt = r"G:\research\clone\examples\KG-BART\dataset\commongen_data\commongen\commongen.train.tgt.txt"
-
-        # fn_onehop = os.path.join(
-        #     args.data_dir, args.tgt_file if args.tgt_file else 'commongen.dev.onehop_5.txt')
-
-        fn_onehop = r"G:\research\clone\examples\KG-BART\dataset\concept_graph\commongen.train.onehop_5.txt"
-
-        dev_dataset = seq2seq_loader.Seq2SeqDataset(
-            fn_src, fn_tgt, entity_id, relation_id, fn_onehop, args.eval_batch_size, data_tokenizer,
-            args.max_seq_length, bi_uni_pipeline=bi_uni_pipeline)
+        print("Loading Dev Dataset", args.dataset_dir)
+        dev_dataset = TLDataset(
+            args=args,
+            logger=logger,
+            entity_dict=entity_dict,
+            dataset_type='valid',
+            language='java',
+        )
         if args.local_rank == -1:
             dev_sampler = RandomSampler(dev_dataset, replacement=False)
             _batch_size = args.eval_batch_size
@@ -386,30 +195,55 @@ def main():
         dev_dataloader = torch.utils.data.DataLoader(dev_dataset, batch_size=_batch_size,
                                                      sampler=dev_sampler,
                                                      num_workers=args.num_workers,
-                                                     collate_fn=seq2seq_loader.batch_list_to_batch_tensors,
+                                                     collate_fn=batch_list_to_batch_tensors,
                                                      pin_memory=False)
 
-    # note: args.train_batch_size has been changed to (/= args.gradient_accumulation_steps)
-    # t_total = int(math.ceil(len(train_dataset.ex_list) / args.train_batch_size)
-    t_total = int(len(train_dataloader) * args.num_train_epochs /
-                  args.gradient_accumulation_steps)
+    if args.do_test:
+        print("Loading Dev Dataset", args.dataset_dir)
+        test_dataset = TLDataset(
+            args=args,
+            logger=logger,
+            entity_dict=entity_dict,
+            dataset_type='test',
+            language='java',
+        )
+        if args.local_rank == -1:
+            test_sampler = RandomSampler(test_dataset, replacement=False)
+            _batch_size = args.test_batch_size
+        else:
+            test_sampler = DistributedSampler(test_dataset)
+            _batch_size = args.test_batch_size // dist.get_world_size()
+        test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=_batch_size,
+                                                     sampler=test_sampler,
+                                                     num_workers=args.num_workers,
+                                                     collate_fn=batch_list_to_batch_tensors,
+                                                     pin_memory=False)
+        t_total = int(len(test_dataloader) * args.num_train_epochs /
+                      args.gradient_accumulation_steps)
 
     # Prepare model
+    entity_embedding_path = os.path.join(args.kg_path, 'entity_embedding')
+    relation_embedding_path = os.path.join(args.kg_path, 'relation_embedding')
+    entity_embedding = np.array(pickle.load(open(entity_embedding_path, "rb")))
+    entity_embedding = np.array(list(np.zeros((4, 1024))) + list(entity_embedding))
+    relation_embedding = np.array(pickle.load(open(relation_embedding_path, "rb")))
+
     recover_step = _get_max_epoch_model(args.output_dir)
-    cls_num_labels = 2
-    type_vocab_size = 6 + \
-                      (1 if args.s2s_add_segment else 0) if args.new_segment_ids else 2
-    num_sentlvl_labels = 2 if args.pretraining_KG else 0
-    relax_projection = 4 if args.relax_projection else 0
+    # cls_num_labels = 2
+    # type_vocab_size = 6 + \
+    #                   (1 if args.s2s_add_segment else 0) if args.new_segment_ids else 2
+    # num_sentlvl_labels = 2 if args.pretraining_KG else 0
+    # relax_projection = 4 if args.relax_projection else 0
     if args.local_rank not in (-1, 0):
         # Make sure only the first process in distributed training will download model & vocab
         dist.barrier()
+
     if (recover_step is None) and (args.model_recover_path is None):
         # if _state_dict == {}, the parameters are randomly initialized
         # if _state_dict == None, the parameters are initialized with bert-init
         _state_dict = {} if args.from_scratch else None
-        model = KGBartForConditionalGeneration.from_pretrained(args.bart_model, entity_weight=entity_embedding,
-                                                             relation_weight=relation_embedding)
+        model = KGBartForConditionalGeneration(config=BartConfig(), entity_weight=entity_embedding,
+                                                               relation_weight=relation_embedding)
         global_step = 0
     else:
         if recover_step:
@@ -422,27 +256,33 @@ def main():
         elif args.model_recover_path:
             logger.info("***** Recover model: %s *****",
                         args.model_recover_path)
+
+            path = os.path.join(args.model_recover_path, "model.{0}.bin".format(args.last_pretrained))
             model_recover = torch.load(
-                args.model_recover_path, map_location='cpu')
+                path, map_location='cpu')
             global_step = 0
-        model = KGBartForConditionalGeneration.from_pretrained(args.bart_model, state_dict=model_recover,
-                                                             entity_weight=entity_embedding,
-                                                             relation_weight=relation_embedding)
+        model_recover_path = os.path.join(args.model_recover_path, "pretrained_{0}".format(args.last_pretrained))
+        model = KGBartForConditionalGeneration.from_pretrained(model_recover_path, state_dict=model_recover,
+                                                               entity_weight=entity_embedding,
+                                                               relation_weight=relation_embedding)
+
+
     if args.local_rank == 0:
         dist.barrier()
 
-    model.to(device)
-    if args.local_rank != -1:
-        try:
-            from torch.nn.parallel import DistributedDataParallel as DDP
-        except ImportError:
-            raise ImportError("DistributedDataParallel")
-        model = DDP(model, device_ids=[
-            args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
-    elif n_gpu > 1:
-        # model = torch.nn.DataParallel(model)
-        model = DataParallelImbalance(model)
+    # model.to(device)
+    # if args.local_rank != -1:
+    #     try:
+    #         from torch.nn.parallel import DistributedDataParallel as DDP
+    #     except ImportError:
+    #         raise ImportError("DistributedDataParallel")
+    #     model = DDP(model, device_ids=[
+    #         args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
+    # elif n_gpu > 1:
+    #     # model = torch.nn.DataParallel(model)
+    #     model = DataParallelImbalance(model)
 
+    model.to(device)
     # Prepare optimizer
     param_optimizer = list(model.named_parameters())
     no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
@@ -480,6 +320,17 @@ def main():
 
         model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
 
+    if args.local_rank != -1:
+        try:
+            from torch.nn.parallel import DistributedDataParallel as DDP
+        except ImportError:
+            raise ImportError("DistributedDataParallel")
+        model = DDP(model, device_ids=[
+            args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
+    elif n_gpu > 1:
+        # model = torch.nn.DataParallel(model)
+        model = DataParallelImbalance(model)
+
     logger.info("***** CUDA.empty_cache() *****")
     torch.cuda.empty_cache()
 
@@ -487,25 +338,6 @@ def main():
 
     output_eval_file = os.path.join(args.log_dir, "eval_results.txt")
     writer = open(output_eval_file, "w")
-
-    def checkpoint_paths(path, pattern=r"model(\d+)\.pt"):
-        """Retrieves all checkpoints found in `path` directory.
-
-        Checkpoints are identified by matching filename to the specified pattern. If
-        the pattern contains groups, the result will be sorted by the first group in
-        descending order.
-        """
-        pt_regexp = re.compile(pattern)
-        files = os.listdir(path)
-
-        entries = []
-        for i, f in enumerate(files):
-            m = pt_regexp.fullmatch(f)
-            if m is not None:
-                idx = float(m.group(1)) if len(m.groups()) > 0 else int(f.split(".")[1])
-                entries.append((idx, m.group(0)))
-        return [os.path.join(path, x[1]) for x in sorted(entries, reverse=True)]
-
     if args.do_train:
         logger.info("***** Running training *****")
         logger.info("  Batch size = %d", args.train_batch_size)
@@ -525,28 +357,26 @@ def main():
             for step, batch in enumerate(tqdm(train_dataloader, desc="Training", position=0, leave=True)):
                 batch = [
                     t.to(device) if t is not None else None for t in batch]
-                if args.pretraining_KG:
-                    input_ids, segment_ids, input_entity_ids, input_mask, mask_qkv, lm_label_ids, masked_pos, masked_weights, is_next, task_idx, oracle_pos, oracle_weights, oracle_labels = batch
-                else:
-                    input_ids, input_entity_ids, subword_mask, word_mask, word_subword, decoder_input_ids, decoder_attention_mask, concept_entity_expand, concept_relation_expand, labels = batch
-                    oracle_pos, oracle_weights, oracle_labels = None, None, None
+                # if args.pretraining_KG:
+                #     input_ids, input_entity_ids, subword_mask, word_mask, word_subword, decoder_input_ids, decoder_attention_mask, labels = batch
+                # else:
+                #     input_ids, input_entity_ids, subword_mask, word_mask, word_subword, decoder_input_ids, decoder_attention_mask, labels = batch
 
+                input_ids, encoder_attention_mask, input_entity_ids, word_mask, decoder_input_ids, decoder_attention_mask, labels = batch
 
-                # subword_mask,word_subword, concept_entity_expand, concept_relation_expand 这几个参数都是没用的
-                # decoder_input_ids, decoder_attention_mask 可以为None
-
-                loss_output = model(input_ids, input_entity_ids=input_entity_ids, attention_mask=subword_mask,
-                                    word_mask=word_mask, word_subword=word_subword,
+                loss_output = model(input_ids,
+                                    input_entity_ids=input_entity_ids,
+                                    attention_mask=encoder_attention_mask,
+                                    word_mask=word_mask,
                                     decoder_input_ids=decoder_input_ids,
                                     decoder_attention_mask=decoder_attention_mask, labels=labels,
-                                    concept_entity_expand=concept_entity_expand,
-                                    concept_relation_expand=concept_relation_expand,
                                     label_smoothing=False)
 
                 masked_lm_loss = loss_output.loss
                 if n_gpu > 1:  # mean() to average on multi-gpu.
                     # loss = loss.mean()
-                    masked_lm_loss = masked_lm_loss.mean()
+                    masked_lm_loss = list(masked_lm_loss)
+                    masked_lm_loss = masked_lm_loss[0].mean()
                 loss = masked_lm_loss
 
                 # logging for each step (i.e., before normalization by args.gradient_accumulation_steps)
@@ -584,26 +414,27 @@ def main():
                 cur_dev_loss = []
                 with torch.no_grad():
                     for step, batch in enumerate(tqdm(dev_dataloader, desc="Evaluating", position=0, leave=True)):
+                        # if args.pretraining_KG:
+                        #     input_ids, input_entity_ids, subword_mask, word_mask, word_subword, decoder_input_ids, decoder_attention_mask, labels = batch
+                        # else:
+                        #     input_ids, input_entity_ids, subword_mask, word_mask, word_subword, decoder_iput_ids, decoder_attention_mask, labels = batch
+
                         batch = [
                             t.to(device) if t is not None else None for t in batch]
-                        if args.pretraining_KG:
-                            input_ids, segment_ids, input_entity_ids, input_mask, mask_qkv, lm_label_ids, masked_pos, masked_weights, is_next, task_idx, oracle_pos, oracle_weights, oracle_labels = batch
-                        else:
-                            input_ids, input_entity_ids, subword_mask, word_mask, word_subword, decoder_input_ids, decoder_attention_mask, concept_entity_expand, concept_relation_expand, labels = batch
+                        input_ids, encoder_attention_mask, input_entity_ids, word_mask, decoder_input_ids, decoder_attention_mask, labels = batch
 
-                        loss_output = model(input_ids, input_entity_ids=input_entity_ids, attention_mask=subword_mask,
-                                            word_mask=word_mask, word_subword=word_subword,
+                        loss_output = model(input_ids, input_entity_ids=input_entity_ids, attention_mask=encoder_attention_mask,
+                                            word_mask=word_mask,
                                             decoder_input_ids=decoder_input_ids,
                                             decoder_attention_mask=decoder_attention_mask, labels=labels,
-                                            concept_entity_expand=concept_entity_expand,
-                                            concept_relation_expand=concept_relation_expand,
                                             label_smoothing=False)
 
                         masked_lm_loss = loss_output.loss
 
                         if n_gpu > 1:  # mean() to average on multi-gpu.
                             # loss = loss.mean()
-                            masked_lm_loss = masked_lm_loss.mean()
+                            masked_lm_loss = list(masked_lm_loss)
+                            masked_lm_loss = masked_lm_loss[0].mean()
                             # next_sentence_loss = next_sentence_loss.mean()
                         loss = masked_lm_loss
                         cur_dev_loss.append(float(loss.item()))
@@ -612,9 +443,8 @@ def main():
                     print("the epoch {} DEV loss is {}".format(i_epoch, dev_loss))
                     if best_dev_loss > dev_loss:
                         best_dev_loss = dev_loss
-                        model_to_save = model.module if hasattr(model,
-                                                                'module') else model  # Only save the model it-self
-                        os.makedirs(args.output_dir + "/best_model", exist_ok=True)
+                        model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
+                        os.makedirs(args.output_dir+"/best_model", exist_ok=True)
                         output_model_file = os.path.join(
                             args.output_dir, "best_model/model.best.bin")
                         # output_optim_file = os.path.join(
@@ -638,6 +468,9 @@ def main():
                     torch.save(optimizer.state_dict(), output_optim_file)
                     torch.save(scheduler.state_dict(), output_schedule_file)
 
+                    pretrained_path = os.path.join(args.output_dir, "pretrained_{0}".format(i_epoch))
+                    model_to_save.save_pretrained(pretrained_path)
+
                     writer.write("epoch " + str(i_epoch) + "\n")
                     writer.write("the current eval accuracy is: " + str(dev_loss) + "\n")
 
@@ -660,9 +493,125 @@ def main():
                         for old_chk in checkpoints[args.keep_last_epochs:]:
                             if os.path.lexists(old_chk):
                                 os.remove(old_chk)
-            logger.info("***** CUDA.empty_cache() *****")
-            torch.cuda.empty_cache()
+
+                logger.info("***** CUDA.empty_cache() *****")
+                torch.cuda.empty_cache()
+
+                # Calculate bleu
+                # if 'dev_bleu' in dev_dataset:
+                #     eval_examples, eval_data = dev_dataset['dev_bleu']
+                # else:
+                #     eval_examples = read_examples(args.dev_filename)
+                #     eval_examples = random.sample(eval_examples, min(1000, len(eval_examples)))
+                #     eval_features = convert_examples_to_features(eval_examples, tokenizer, args, stage='test')
+                #     all_source_ids = torch.tensor([f.source_ids for f in eval_features], dtype=torch.long)
+                #     all_source_mask = torch.tensor([f.source_mask for f in eval_features], dtype=torch.long)
+                #     eval_data = TensorDataset(all_source_ids, all_source_mask)
+                #     dev_dataset['dev_bleu'] = eval_examples, eval_data
+                #
+                # eval_sampler = SequentialSampler(eval_data)
+                # eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=args.eval_batch_size)
+
+                model.eval()
+                p = []
+                eval_examples = []
+                eid = 0
+                for batch in dev_dataloader:
+                    batch = tuple(t.to(device) for t in batch)
+                    input_ids, encoder_attention_mask, input_entity_ids, word_mask, decoder_input_ids, decoder_attention_mask, labels = batch
+                    with torch.no_grad():
+                        values, preds = model(input_ids, input_entity_ids=input_entity_ids,
+                                              attention_mask=encoder_attention_mask,
+                                              word_mask=word_mask, return_tuple=False, return_pred=True,
+                                              label_smoothing=False,
+                                              decoder_input_ids=decoder_input_ids,
+                                              decoder_attention_mask=decoder_attention_mask, labels=labels)
+                        for pi, pred in enumerate(preds):
+                            t = pred[1].cpu().numpy()
+                            t = list(t)
+                            if 0 in t:
+                                t = t[:t.index(0)]
+                            text = dev_dataset.nl_tokenizer.decode(t)
+                            p.append(text)
+                            label_text = dev_dataset.nl_tokenizer.decode(labels[pi])
+                            new_example = EvalExamples(
+                                idx=eid,
+                                target=label_text
+                            )
+                            eval_examples.append(new_example)
+                            eid += 1
+
+                model.train()
+                predictions = []
+                with open(os.path.join(args.output_dir, "dev.output"), 'w') as f, open(
+                        os.path.join(args.output_dir, "dev.gold"), 'w') as f1:
+                    for ref, gold in zip(p, eval_examples):
+                        predictions.append(str(gold.idx) + '\t' + ref)
+                        f.write(str(gold.idx) + '\t' + ref + '\n')
+                        f1.write(str(gold.idx) + '\t' + gold.target + '\n')
+
+                (goldMap, predictionMap) = bleu.computeMaps(predictions, os.path.join(args.output_dir, "dev.gold"))
+                dev_bleu = round(bleu.bleuFromMaps(goldMap, predictionMap)[0], 2)
+                logger.info("  %s = %s " % ("bleu-4", str(dev_bleu)))
+                logger.info("  " + "*" * 20)
+                if dev_bleu > best_bleu:
+                    logger.info("  Best bleu:%s", dev_bleu)
+                    logger.info("  " + "*" * 20)
+                    best_bleu = dev_bleu
+                    # Save best checkpoint for best bleu
+                    output_dir = os.path.join(args.output_dir, 'checkpoint-best-bleu')
+                    if not os.path.exists(output_dir):
+                        os.makedirs(output_dir)
+                    model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
+                    output_model_file = os.path.join(output_dir, "pytorch_model.bin")
+                    torch.save(model_to_save.state_dict(), output_model_file)
 
 
-if __name__ == "__main__":
-    main()
+    if args.do_test:
+        model.eval()
+        p = []
+        eval_examples = []
+        eid = 0
+        for batch in test_dataloader:
+            batch = tuple(t.to(device) for t in batch)
+            input_ids, encoder_attention_mask, input_entity_ids, word_mask, decoder_input_ids, decoder_attention_mask, labels = batch
+            with torch.no_grad():
+                values, preds = model(input_ids, input_entity_ids=input_entity_ids, attention_mask=encoder_attention_mask,
+                                    word_mask=word_mask, return_tuple=False, return_pred=True, label_smoothing=False,
+                                      decoder_input_ids=decoder_input_ids, decoder_attention_mask=decoder_attention_mask, labels=labels)
+                for pi, pred in enumerate(preds):
+                    t = pred[1].cpu().numpy()
+                    t = list(t)
+                    if 0 in t:
+                        t = t[:t.index(0)]
+                    text = test_dataset.nl_tokenizer.decode(t)
+                    p.append(text)
+                    label_text = test_dataset.nl_tokenizer.decode(labels[pi])
+                    new_example = EvalExamples(
+                        idx=eid,
+                        target=label_text
+                    )
+                    eval_examples.append(new_example)
+                    eid += 1
+
+        model.train()
+        predictions = []
+        with open(os.path.join(args.output_dir, "dev.output"), 'w') as f, open(
+                os.path.join(args.output_dir, "dev.gold"), 'w') as f1:
+            for ref, gold in zip(p, eval_examples):
+                predictions.append(str(gold.idx) + '\t' + ref)
+                f.write(str(gold.idx) + '\t' + ref + '\n')
+                f1.write(str(gold.idx) + '\t' + gold.target + '\n')
+
+        (goldMap, predictionMap) = bleu.computeMaps(predictions, os.path.join(args.output_dir, "dev.gold"))
+        dev_bleu = round(bleu.bleuFromMaps(goldMap, predictionMap)[0], 2)
+        logger.info("  %s = %s " % ("bleu-4", str(dev_bleu)))
+        logger.info("  " + "*" * 20)
+
+class EvalExamples:
+    def __init__(self, idx, target):
+        self.idx = idx
+        self.target = target
+
+if __name__ == '__main__':
+    run()

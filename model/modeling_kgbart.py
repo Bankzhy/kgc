@@ -1637,6 +1637,7 @@ class KGBartForConditionalGeneration(PretrainedBartModel):
             output_attentions=None,
             output_hidden_states=None,
             return_tuple=None,
+            return_pred=False,
             label_smoothing=None,
             **unused,
     ):
@@ -1735,6 +1736,11 @@ class KGBartForConditionalGeneration(PretrainedBartModel):
         if return_tuple:
             output = (lm_logits,) + outputs[1:]
             return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
+
+        if return_pred:
+            probs = F.log_softmax(lm_logits.float(), dim=-1)
+            values, predictions = probs.topk(self.config.top_k)
+            return values, predictions
 
         return Seq2SeqLMOutput(
             loss=masked_lm_loss,
