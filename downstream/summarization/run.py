@@ -454,7 +454,7 @@ def run():
                         torch.save(optimizer.state_dict(), output_optim_file)
                         torch.save(scheduler.state_dict(), output_schedule_file)
 
-                    if i_epoch % args.keep_last_epochs == 0:
+                    if i_epoch % args.keep_last_epochs == 0 or i_epoch == int(args.num_train_epochs):
                         logger.info(
                             "** ** * Saving fine-tuned model and optimizer ** ** * ")
                         model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
