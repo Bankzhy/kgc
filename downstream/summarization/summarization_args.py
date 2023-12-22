@@ -72,7 +72,7 @@ class PretrainArguments:
         default=12,
     )
     test_batch_size: int = field(
-        default=4,
+        default=12,
     )
 
     num_workers: int = field(
@@ -126,17 +126,17 @@ class PretrainArguments:
     )
 
     do_train: bool = field(
-        default=False,
+        default=True,
         metadata={'help': "Whether to run training."}
     )
 
     do_eval: bool = field(
-        default=False,
+        default=True,
         metadata={'help': "Whether to run eval on the dev set."}
     )
 
     do_test: bool = field(
-        default=True,
+        default=False,
         metadata={'help': "Whether to run eval on the test set."}
     )
 
