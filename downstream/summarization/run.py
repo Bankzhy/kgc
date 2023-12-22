@@ -561,6 +561,8 @@ def run():
                     output_model_file = os.path.join(output_dir, "pytorch_model.bin")
                     torch.save(model_to_save.state_dict(), output_model_file)
 
+            logger.info("***** CUDA.empty_cache() *****")
+            torch.cuda.empty_cache()
 
     if args.do_test:
         model.eval()
