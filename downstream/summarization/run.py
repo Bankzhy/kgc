@@ -329,6 +329,7 @@ def run():
     torch.cuda.empty_cache()
 
     best_dev_loss = 1000
+    best_bleu = 0
 
     output_eval_file = os.path.join(args.log_dir, "eval_results.txt")
     writer = open(output_eval_file, "w")
