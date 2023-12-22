@@ -185,7 +185,7 @@ class PretrainArguments:
     )
 
     keep_last_epochs: int = field(
-        default=5,
+        default=3,
     )
 
     loss_scale: float = field(
