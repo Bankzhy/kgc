@@ -255,11 +255,15 @@ def run():
             model_recover = torch.load(
                 path, map_location='cpu')
             global_step = 0
+
+        if args.do_test:
+            model_recover = torch.load(args.load_model_path, map_location='cpu')
         model_recover_path = os.path.join(args.model_recover_path, "pretrained_{0}".format(args.last_pretrained))
         model = KGBartForConditionalGeneration.from_pretrained(model_recover_path, state_dict=model_recover,
                                                                entity_weight=entity_embedding,
                                                                relation_weight=relation_embedding)
-
+    if args.do_test:
+        model.load_state_dict(torch.load(args.load_model_path))
 
     if args.local_rank == 0:
         dist.barrier()
