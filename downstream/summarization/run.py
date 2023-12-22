@@ -463,8 +463,8 @@ def run():
                     torch.save(optimizer.state_dict(), output_optim_file)
                     torch.save(scheduler.state_dict(), output_schedule_file)
 
-                    pretrained_path = os.path.join(args.output_dir, "pretrained_{0}".format(i_epoch))
-                    model_to_save.save_pretrained(pretrained_path)
+                    # pretrained_path = os.path.join(args.output_dir, "pretrained_{0}".format(i_epoch))
+                    # model_to_save.save_pretrained(pretrained_path)
 
                     writer.write("epoch " + str(i_epoch) + "\n")
                     writer.write("the current eval accuracy is: " + str(dev_loss) + "\n")
