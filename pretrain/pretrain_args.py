@@ -63,10 +63,10 @@ class PretrainArguments:
     )
 
     train_batch_size: int = field(
-        default=48,
+        default=12,
     )
     eval_batch_size: int = field(
-        default=16,
+        default=12,
     )
 
     num_workers: int = field(
@@ -110,7 +110,7 @@ class PretrainArguments:
     )
 
     gradient_accumulation_steps: int = field(
-        default=6,
+        default=1,
         metadata={'help': "Number of updates steps to accumulate before performing a backward/update pass."}
     )
 
