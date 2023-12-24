@@ -59,7 +59,7 @@ class PretrainArguments:
     )
 
     model_recover_path: str = field(
-        default="pretrain_model"
+        default=None
     )
     load_model_path: str = field(
         default="output/train_kgbart/pytorch_model.bin"
@@ -84,7 +84,7 @@ class PretrainArguments:
     )
 
     last_pretrained: int = field(
-        default=8
+        default=1
     )
 
     trained_vocab: str = field(

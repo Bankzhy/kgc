@@ -235,6 +235,7 @@ def run():
     if (recover_step is None) and (args.model_recover_path is None):
         # if _state_dict == {}, the parameters are randomly initialized
         # if _state_dict == None, the parameters are initialized with bert-init
+        logger.info("***** Build model *****")
         _state_dict = {} if args.from_scratch else None
         model = KGBartForConditionalGeneration(config=BartConfig(), entity_weight=entity_embedding,
                                                                relation_weight=relation_embedding)
