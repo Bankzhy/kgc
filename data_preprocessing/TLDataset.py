@@ -26,8 +26,8 @@ class TLDataset(Dataset):
         self.all_codes, self.all_docs = self.load_tl_dataset_from_dir(dataset_dir=load_path)
         self.code_tokenizer, self.nl_tokenizer = self.get_tokenizers()
 
-        self.all_codes = random.sample(self.all_codes, int(len(self.all_codes) / 10))
-        self.all_docs = random.sample(self.all_docs, int(len(self.all_docs) / 10))
+        # self.all_codes = random.sample(self.all_codes, int(len(self.all_codes) / 10))
+        # self.all_docs = random.sample(self.all_docs, int(len(self.all_docs) / 10))
 
         # self.kg_matcher = KGMatcher(
         #     entity2id = entity2id,
