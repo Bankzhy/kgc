@@ -1739,7 +1739,7 @@ class KGBartForConditionalGeneration(PretrainedBartModel):
 
         if return_pred:
             probs = F.log_softmax(lm_logits.float(), dim=-1)
-            values, predictions = probs.topk(self.config.top_k)
+            values, predictions = probs.topk(20)
             return values, predictions
 
         return Seq2SeqLMOutput(

@@ -237,7 +237,7 @@ def run():
         # if _state_dict == None, the parameters are initialized with bert-init
         logger.info("***** Build model *****")
         _state_dict = {} if args.from_scratch else None
-        model = KGBartForConditionalGeneration(config=BartConfig(), entity_weight=entity_embedding,
+        model = KGBartForConditionalGeneration.from_pretrained(args.bart_model, entity_weight=entity_embedding,
                                                                relation_weight=relation_embedding)
         global_step = 0
     else:
@@ -257,14 +257,9 @@ def run():
                 path, map_location='cpu')
             global_step = 0
 
-        if args.do_test:
-            model_recover = torch.load(args.load_model_path, map_location='cpu')
-        model_recover_path = os.path.join(args.model_recover_path, "pretrained_{0}".format(args.last_pretrained))
-        model = KGBartForConditionalGeneration.from_pretrained(model_recover_path, state_dict=model_recover,
+        model = KGBartForConditionalGeneration.from_pretrained(args.bart_model, state_dict=model_recover,
                                                                entity_weight=entity_embedding,
                                                                relation_weight=relation_embedding)
-    if args.do_test:
-        model.load_state_dict(torch.load(args.load_model_path))
 
     if args.local_rank == 0:
         dist.barrier()
@@ -528,8 +523,9 @@ def run():
                                               decoder_input_ids=decoder_input_ids,
                                               decoder_attention_mask=decoder_attention_mask, labels=labels)
                         for pi, pred in enumerate(preds):
-                            t = pred[1].cpu().numpy()
+                            t = pred[0].cpu().numpy()
                             t = list(t)
+                            t = t[2:]
                             if 0 in t:
                                 t = t[:t.index(0)]
                             text = dev_dataset.nl_tokenizer.decode(t)
@@ -579,15 +575,30 @@ def run():
             batch = tuple(t.to(device) for t in batch)
             input_ids, encoder_attention_mask, input_entity_ids, word_mask, decoder_input_ids, decoder_attention_mask, labels = batch
             with torch.no_grad():
-                # values, preds = model(input_ids, input_entity_ids=input_entity_ids, attention_mask=encoder_attention_mask,
-                #                     word_mask=word_mask, return_tuple=False, return_pred=True, label_smoothing=False,
-                #                       decoder_input_ids=decoder_input_ids, decoder_attention_mask=decoder_attention_mask, labels=labels)
-                preds = model.generate(input_ids=input_ids, entity_ids=input_entity_ids, attention_mask=encoder_attention_mask,
-                                       word_mask=word_mask, pad_token_id=0, bos_token_id=1, eos_token_id=2, decoder_start_token_id=1)
+                values, preds = model(input_ids, input_entity_ids=input_entity_ids, attention_mask=encoder_attention_mask,
+                                    word_mask=word_mask, return_tuple=False, return_pred=True, label_smoothing=False,
+                                      decoder_input_ids=decoder_input_ids, decoder_attention_mask=decoder_attention_mask, labels=labels)
+
+                # preds = model.generate(input_ids=input_ids, entity_ids=input_entity_ids, attention_mask=encoder_attention_mask,
+                #                        word_mask=word_mask, pad_token_id=0, bos_token_id=1, eos_token_id=2, decoder_start_token_id=1)
+
+                # preds = model.generate(
+                #     input_ids=input_ids,
+                #     entity_ids=input_entity_ids, attention_mask=encoder_attention_mask,
+                #     word_mask=word_mask,
+                #     max_length=20,
+                #     temperature=None,
+                #     top_p=1.0,
+                #     do_sample=False,
+                #     num_return_sequences=1,
+                #     num_beams=5,
+                #     no_repeat_ngram_size=3
+                # )
 
                 for pi, pred in enumerate(preds):
-                    t = pred[1].cpu().numpy()
+                    t = pred[0].cpu().numpy()
                     t = list(t)
+                    t = t[2:]
                     if 0 in t:
                         t = t[:t.index(0)]
                     text = test_dataset.nl_tokenizer.decode(t)
