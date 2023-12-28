@@ -520,8 +520,7 @@ def run():
                                               attention_mask=encoder_attention_mask,
                                               word_mask=word_mask, return_tuple=False, return_pred=True,
                                               label_smoothing=False,
-                                              decoder_input_ids=decoder_input_ids,
-                                              decoder_attention_mask=decoder_attention_mask, labels=labels)
+                                              )
                         for pi, pred in enumerate(preds):
                             t = pred[0].cpu().numpy()
                             t = list(t)
@@ -575,9 +574,15 @@ def run():
             batch = tuple(t.to(device) for t in batch)
             input_ids, encoder_attention_mask, input_entity_ids, word_mask, decoder_input_ids, decoder_attention_mask, labels = batch
             with torch.no_grad():
+                # values, preds = model(input_ids, input_entity_ids=input_entity_ids, attention_mask=encoder_attention_mask,
+                #                     word_mask=word_mask, return_tuple=False, return_pred=True, label_smoothing=False,
+                #                       decoder_input_ids=decoder_input_ids, decoder_attention_mask=decoder_attention_mask, labels=labels)
+
+
                 values, preds = model(input_ids, input_entity_ids=input_entity_ids, attention_mask=encoder_attention_mask,
                                     word_mask=word_mask, return_tuple=False, return_pred=True, label_smoothing=False,
-                                      decoder_input_ids=decoder_input_ids, decoder_attention_mask=decoder_attention_mask, labels=labels)
+                                      )
+
 
                 # preds = model.generate(input_ids=input_ids, entity_ids=input_entity_ids, attention_mask=encoder_attention_mask,
                 #                        word_mask=word_mask, pad_token_id=0, bos_token_id=1, eos_token_id=2, decoder_start_token_id=1)
@@ -592,8 +597,17 @@ def run():
                 #     do_sample=False,
                 #     num_return_sequences=1,
                 #     num_beams=5,
-                #     no_repeat_ngram_size=3
+                #     no_repeat_ngram_size=3,
                 # )
+
+                # outputs = model.generate(
+                #     input_ids=input_ids,
+                #     forced_bos_token_id=1,
+                #     entity_ids=input_entity_ids,
+                #     decode_strategy="beam_search",
+                #     num_beams=4,
+                #     max_length=50,
+                #     use_faster=True)
 
                 for pi, pred in enumerate(preds):
                     t = pred[0].cpu().numpy()
