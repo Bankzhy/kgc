@@ -157,7 +157,7 @@ def run():
             logger=logger,
             entity_dict=entity_dict,
             dataset_type='train',
-            task=enums.TASK_NSP,
+            task=enums.TASK_MASS,
             language='java',
         )
         if args.local_rank == -1:
@@ -180,7 +180,7 @@ def run():
             logger=logger,
             entity_dict=entity_dict,
             dataset_type='valid',
-            task=enums.TASK_NSP,
+            task=enums.TASK_MASS,
             language='java',
         )
         if args.local_rank == -1:
@@ -429,22 +429,22 @@ def run():
                         torch.save(model_to_save.state_dict(), output_model_file)
                         # torch.save(optimizer.state_dict(), output_optim_file)
                         # torch.save(scheduler.state_dict(), output_schedule_file)
-
-                    logger.info(
-                        "** ** * Saving fine-tuned model and optimizer ** ** * ")
-                    model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
-                    output_model_file = os.path.join(
-                        args.output_dir, "model.{0}.bin".format(i_epoch))
-                    output_optim_file = os.path.join(
-                        args.output_dir, "optim.{0}.bin".format(i_epoch))
-                    output_schedule_file = os.path.join(
-                        args.output_dir, "sched.{0}.bin".format(i_epoch))
-                    torch.save(model_to_save.state_dict(), output_model_file)
-                    torch.save(optimizer.state_dict(), output_optim_file)
-                    torch.save(scheduler.state_dict(), output_schedule_file)
-
-                    pretrained_path = os.path.join(args.output_dir, "pretrained_{0}".format(i_epoch))
-                    model_to_save.save_pretrained(pretrained_path)
+                    if i_epoch % args.keep_last_epochs == 0 or i_epoch == int(args.num_train_epochs):
+                        logger.info(
+                            "** ** * Saving fine-tuned model and optimizer ** ** * ")
+                        model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
+                        output_model_file = os.path.join(
+                            args.output_dir, "model.{0}.bin".format(i_epoch))
+                        output_optim_file = os.path.join(
+                            args.output_dir, "optim.{0}.bin".format(i_epoch))
+                        output_schedule_file = os.path.join(
+                            args.output_dir, "sched.{0}.bin".format(i_epoch))
+                        torch.save(model_to_save.state_dict(), output_model_file)
+                        torch.save(optimizer.state_dict(), output_optim_file)
+                        torch.save(scheduler.state_dict(), output_schedule_file)
+    
+                        pretrained_path = os.path.join(args.output_dir, "pretrained_{0}".format(i_epoch))
+                        model_to_save.save_pretrained(pretrained_path)
 
                     writer.write("epoch " + str(i_epoch) + "\n")
                     writer.write("the current eval accuracy is: " + str(dev_loss) + "\n")
@@ -452,22 +452,22 @@ def run():
                     logger.info("***** CUDA.empty_cache() *****")
                     torch.cuda.empty_cache()
 
-                    if args.keep_last_epochs > 0:
-                        # remove old epoch checkpoints; checkpoints are sorted in descending order
-                        checkpoints = checkpoint_paths(args.output_dir, pattern=r"model.\d+.bin")
-                        for old_chk in checkpoints[args.keep_last_epochs:]:
-                            if os.path.lexists(old_chk):
-                                os.remove(old_chk)
-
-                        checkpoints = checkpoint_paths(args.output_dir, pattern=r"optim.\d+.bin")
-                        for old_chk in checkpoints[args.keep_last_epochs:]:
-                            if os.path.lexists(old_chk):
-                                os.remove(old_chk)
-
-                        checkpoints = checkpoint_paths(args.output_dir, pattern=r"sched.\d+.bin")
-                        for old_chk in checkpoints[args.keep_last_epochs:]:
-                            if os.path.lexists(old_chk):
-                                os.remove(old_chk)
+                    # if args.keep_last_epochs > 0:
+                    #     # remove old epoch checkpoints; checkpoints are sorted in descending order
+                    #     checkpoints = checkpoint_paths(args.output_dir, pattern=r"model.\d+.bin")
+                    #     for old_chk in checkpoints[args.keep_last_epochs:]:
+                    #         if os.path.lexists(old_chk):
+                    #             os.remove(old_chk)
+                    # 
+                    #     checkpoints = checkpoint_paths(args.output_dir, pattern=r"optim.\d+.bin")
+                    #     for old_chk in checkpoints[args.keep_last_epochs:]:
+                    #         if os.path.lexists(old_chk):
+                    #             os.remove(old_chk)
+                    # 
+                    #     checkpoints = checkpoint_paths(args.output_dir, pattern=r"sched.\d+.bin")
+                    #     for old_chk in checkpoints[args.keep_last_epochs:]:
+                    #         if os.path.lexists(old_chk):
+                    #             os.remove(old_chk)
 
 
                 logger.info("***** CUDA.empty_cache() *****")
