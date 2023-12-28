@@ -429,6 +429,8 @@ def run():
                         torch.save(model_to_save.state_dict(), output_model_file)
                         # torch.save(optimizer.state_dict(), output_optim_file)
                         # torch.save(scheduler.state_dict(), output_schedule_file)
+                        pretrained_path = os.path.join(args.output_dir, "pretrained_best")
+                        model_to_save.save_pretrained(pretrained_path)
                     if i_epoch % args.keep_last_epochs == 0 or i_epoch == int(args.num_train_epochs):
                         logger.info(
                             "** ** * Saving fine-tuned model and optimizer ** ** * ")
