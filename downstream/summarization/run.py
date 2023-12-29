@@ -249,12 +249,10 @@ def run():
             global_step = math.floor(
                 recover_step * t_total / args.num_train_epochs)
         elif args.model_recover_path:
-            logger.info("***** Recover model: %s *****",
-                        args.model_recover_path)
+            logger.info("***** Recover model: %s *****", args.model_recover_path)
 
             path = os.path.join(args.model_recover_path, "model.{0}.bin".format(args.last_pretrained))
-            model_recover = torch.load(
-                path, map_location='cpu')
+            model_recover = torch.load(path, map_location='cpu')
             global_step = 0
 
         model = KGBartForConditionalGeneration.from_pretrained(args.bart_model, state_dict=model_recover,

@@ -74,11 +74,11 @@ class PretrainArguments:
     )
 
     num_train_epochs: float = field(
-        default=5
+        default=10
     )
 
     last_pretrained: int = field(
-        default=1
+        default=5
     )
 
     trained_vocab: str = field(
