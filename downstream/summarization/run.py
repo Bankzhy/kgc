@@ -577,26 +577,26 @@ def run():
                 #                       decoder_input_ids=decoder_input_ids, decoder_attention_mask=decoder_attention_mask, labels=labels)
 
 
-                values, preds = model(input_ids, input_entity_ids=input_entity_ids, attention_mask=encoder_attention_mask,
-                                    word_mask=word_mask, return_tuple=False, return_pred=True, label_smoothing=False,
-                                      )
+                # values, preds = model(input_ids, input_entity_ids=input_entity_ids, attention_mask=encoder_attention_mask,
+                #                     word_mask=word_mask, return_tuple=False, return_pred=True, label_smoothing=False,
+                #                       )
 
 
                 # preds = model.generate(input_ids=input_ids, entity_ids=input_entity_ids, attention_mask=encoder_attention_mask,
                 #                        word_mask=word_mask, pad_token_id=0, bos_token_id=1, eos_token_id=2, decoder_start_token_id=1)
 
-                # preds = model.generate(
-                #     input_ids=input_ids,
-                #     entity_ids=input_entity_ids, attention_mask=encoder_attention_mask,
-                #     word_mask=word_mask,
-                #     max_length=20,
-                #     temperature=None,
-                #     top_p=1.0,
-                #     do_sample=False,
-                #     num_return_sequences=1,
-                #     num_beams=5,
-                #     no_repeat_ngram_size=3,
-                # )
+                preds = model.generate(
+                    input_ids=input_ids,
+                    entity_ids=input_entity_ids, attention_mask=encoder_attention_mask,
+                    word_mask=word_mask,
+                    max_length=20,
+                    temperature=None,
+                    top_p=1.0,
+                    do_sample=False,
+                    num_return_sequences=1,
+                    num_beams=5,
+                    no_repeat_ngram_size=3,
+                )
 
                 # outputs = model.generate(
                 #     input_ids=input_ids,
@@ -608,7 +608,7 @@ def run():
                 #     use_faster=True)
 
                 for pi, pred in enumerate(preds):
-                    t = pred[0].cpu().numpy()
+                    t = pred.cpu().numpy()
                     t = list(t)
                     t = t[2:]
                     if 0 in t:

@@ -8,7 +8,6 @@ from torch.utils.data.dataset import Dataset
 import enums
 from data_preprocessing.pretrain.data_utils import load_dataset_from_dir
 from data_preprocessing.pretrain.vocab import load_vocab, init_vocab, Vocab
-from model.configuration_bart import BartConfig
 from util import batch_list_to_batch_tensors
 
 

@@ -409,7 +409,7 @@ class GenerationMixin:
             # create empty decoder_input_ids  ##TODO: change the length
             input_ids = torch.full(
                 (effective_batch_size * num_beams, 1),
-                decoder_start_token_id,
+                2,
                 dtype=torch.long,
                 device=next(self.parameters()).device,
             )

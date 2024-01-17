@@ -1,11 +1,22 @@
 __version__ = "3.0.2"
 # from .tokenization_bart import BartTokenizer, BartTokenizerFast, MBartTokenizer
-from .modeling_kgbart import (
-    PretrainedBartModel,
-    KGBartModel,
-    KGBartForConditionalGeneration,
+# from .modeling_kgbart import (
+#     PretrainedBartModel,
+#     KGBartModel,
+#     KGBartForConditionalGeneration,
+#     BART_PRETRAINED_MODEL_ARCHIVE_LIST,
+# )
+from .modeling_bart import (
     BART_PRETRAINED_MODEL_ARCHIVE_LIST,
+    BartForCausalLM,
+    BartForConditionalGeneration,
+    BartForQuestionAnswering,
+    BartForSequenceClassification,
+    BartModel,
+    BartPretrainedModel,
+    PretrainedBartModel,
 )
+
 from .optimization import (
     AdamW,
     get_constant_schedule,

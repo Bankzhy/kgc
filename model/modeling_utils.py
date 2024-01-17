@@ -317,6 +317,20 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin):
     def base_model(self):
         return getattr(self, self.base_model_prefix, self)
 
+
+    def post_init(self):
+        """
+        A method executed at the end of each Transformer model initialization, to execute code that needs the model's
+        modules properly initialized (such as weight initialization).
+        """
+        self.init_weights()
+        self._backward_compatibility_gradient_checkpointing()
+    def _backward_compatibility_gradient_checkpointing(self):
+        if self.supports_gradient_checkpointing and getattr(self.config, "gradient_checkpointing", False):
+            self.gradient_checkpointing_enable()
+            # Remove the attribute now that is has been consumed, so it's no saved in the config.
+            delattr(self.config, "gradient_checkpointing")
+
     def get_input_embeddings(self) -> nn.Module:
         """
         Returns the model's input embeddings.

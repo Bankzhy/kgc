@@ -78,7 +78,7 @@ class PretrainArguments:
     )
 
     last_pretrained: int = field(
-        default=6
+        default=9
     )
 
     trained_vocab: str = field(
