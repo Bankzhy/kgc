@@ -30,6 +30,10 @@ class RuntimeArguments:
         default="output/run",
         metadata={'help': "The output directory where the model predictions and checkpoints will be written."}
     )
+    model_root: str = field(
+        default="output/model",
+        metadata={'help': "The output directory where the model predictions and checkpoints will be written."}
+    )
     trained_vocab: str = field(
         default='r"../dataset/tokeniazers"',
         metadata={'help': 'Directory of trained vocabs'}
