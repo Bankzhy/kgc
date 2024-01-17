@@ -58,6 +58,22 @@ class CodeTrainer(Seq2SeqTrainer):
     def set_task(self, task):
         self.task = task
 
+    def save_model(self, output_dir: Optional[str] = None, _internal_call: bool = False):
+        """
+        Will save the model, so you can reload it using `from_pretrained()`.
+
+        Will only save from the main process.
+        """
+
+        if output_dir is None:
+            output_dir = self.args.output_dir
+
+        if self.args.should_save:
+            self.model.save_pretrained(
+                output_dir
+            )
+
+
 
 class CodeCLSTrainer(Trainer):
 
