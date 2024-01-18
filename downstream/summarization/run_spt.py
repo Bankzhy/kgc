@@ -4,6 +4,7 @@ import sys
 
 curPath = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
 sys.path.append(curPath)
+sys.path.append('../..')
 print("当前的工作目录：",os.getcwd())
 print("python搜索模块的路径集合",sys.path)
 from data_preprocessing.TLDataset import TLDataset
