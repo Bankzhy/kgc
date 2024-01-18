@@ -98,7 +98,14 @@ def collate_fn(batch, args, task):
         #     processor=Vocab.eos_processor,
         #     max_len=args.max_nl_len,
         # )
-
+    elif task == enums.TASK_SUMMARIZATION:
+        input_ids, encoder_attention_mask, input_entity_ids, word_mask, decoder_input_ids, decoder_attention_mask, labels = map(
+            list, zip(*batch))
+        model_inputs['input_ids'] = torch.tensor(input_ids, dtype=torch.long)
+        model_inputs['attention_mask'] = torch.tensor(encoder_attention_mask, dtype=torch.long)
+        model_inputs['decoder_input_ids'] = torch.tensor(decoder_input_ids, dtype=torch.long)
+        model_inputs['decoder_attention_mask'] = torch.tensor(decoder_attention_mask, dtype=torch.long)
+        model_inputs['labels'] = torch.tensor(labels, dtype=torch.long)
     # clone detection
     # elif task == enums.TASK_CLONE_DETECTION:
     #     code_1_raw, ast_1_raw, name_1_raw, code_2_raw, ast_2_raw, name_2_raw, labels = map(list, zip(*batch))

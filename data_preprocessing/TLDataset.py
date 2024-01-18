@@ -21,13 +21,14 @@ class TLDataset(Dataset):
         self.paths = {}
         self.language = language
         self.logger = logger
+        self.dataset_type = dataset_type
 
         load_path = os.path.join(args.dataset_dir, dataset_type)
         self.all_codes, self.all_docs = self.load_tl_dataset_from_dir(dataset_dir=load_path)
         self.code_tokenizer, self.nl_tokenizer = self.get_tokenizers()
 
-        # self.all_codes = random.sample(self.all_codes, int(len(self.all_codes) / 10))
-        # self.all_docs = random.sample(self.all_docs, int(len(self.all_docs) / 10))
+        # self.all_codes = random.sample(self.all_codes, int(len(self.all_codes) / 1000))
+        # self.all_docs = random.sample(self.all_docs, int(len(self.all_docs) / 1000))
 
         # self.kg_matcher = KGMatcher(
         #     entity2id = entity2id,
@@ -162,8 +163,7 @@ class TLDataset(Dataset):
         all_codes = []
         all_docs = []
 
-        tag = dataset_dir.split('/')
-        tag = tag[len(tag) - 1]
+        tag = self.dataset_type
         if tag == 'train':
             code_tokn_f = os.path.join(dataset_dir, "train.token.code")
             nl_tokn_f = os.path.join(dataset_dir, "train.token.nl")

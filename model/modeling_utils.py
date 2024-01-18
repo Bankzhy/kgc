@@ -24,6 +24,7 @@ import torch
 from torch import Tensor, device, dtype, nn
 from torch.nn import CrossEntropyLoss
 from torch.nn import functional as F
+from transformers.generation_utils import GenerationMixin
 
 from .activations import get_activation
 from .configuration_utils import PretrainedConfig
@@ -38,7 +39,8 @@ from .file_utils import (
     is_remote_url,
     is_torch_tpu_available,
 )
-from .generation_utils import GenerationMixin
+# from .generation_utils import GenerationMixin
+
 
 logger = logging.getLogger(__name__)
 
@@ -852,19 +854,19 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin):
                 )
         model.tie_weights()  # make sure token embedding weights are still tied if needed
 
-        model.model.shared_entity.weight = torch.nn.Parameter(
-            torch.from_numpy(model_kwargs['entity_weight']).type(torch.FloatTensor))
-        model.model.encoder.embed_entitys.weight = torch.nn.Parameter(
-            torch.from_numpy(model_kwargs['entity_weight']).type(torch.FloatTensor))
-        model.model.decoder.embed_entitys.weight = torch.nn.Parameter(
-            torch.from_numpy(model_kwargs['entity_weight']).type(torch.FloatTensor))
-
-        model.model.shared_relation.weight = torch.nn.Parameter(
-            torch.from_numpy(model_kwargs['relation_weight']).type(torch.FloatTensor))
-        model.model.encoder.embed_relations.weight = torch.nn.Parameter(
-            torch.from_numpy(model_kwargs['relation_weight']).type(torch.FloatTensor))
-        model.model.decoder.embed_relations.weight = torch.nn.Parameter(
-            torch.from_numpy(model_kwargs['relation_weight']).type(torch.FloatTensor))
+        # model.model.shared_entity.weight = torch.nn.Parameter(
+        #     torch.from_numpy(model_kwargs['entity_weight']).type(torch.FloatTensor))
+        # model.model.encoder.embed_entitys.weight = torch.nn.Parameter(
+        #     torch.from_numpy(model_kwargs['entity_weight']).type(torch.FloatTensor))
+        # model.model.decoder.embed_entitys.weight = torch.nn.Parameter(
+        #     torch.from_numpy(model_kwargs['entity_weight']).type(torch.FloatTensor))
+        #
+        # model.model.shared_relation.weight = torch.nn.Parameter(
+        #     torch.from_numpy(model_kwargs['relation_weight']).type(torch.FloatTensor))
+        # model.model.encoder.embed_relations.weight = torch.nn.Parameter(
+        #     torch.from_numpy(model_kwargs['relation_weight']).type(torch.FloatTensor))
+        # model.model.decoder.embed_relations.weight = torch.nn.Parameter(
+        #     torch.from_numpy(model_kwargs['relation_weight']).type(torch.FloatTensor))
         # Set model in evaluation mode to deactivate DropOut modules by default
         model.eval()
 

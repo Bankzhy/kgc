@@ -24,7 +24,7 @@ import torch.utils.checkpoint
 from torch import nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
-from activations import ACT2FN
+from .activations import ACT2FN
 from pretrain import slogging
 from .modeling_outputs import (
     BaseModelOutput,
@@ -1409,8 +1409,8 @@ class BartForConditionalGeneration(BartPretrainedModel):
             return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
 
         return Seq2SeqLMOutput(
-            loss=masked_lm_loss,
             logits=lm_logits,
+            loss=masked_lm_loss,
             past_key_values=outputs.past_key_values,
             decoder_hidden_states=outputs.decoder_hidden_states,
             decoder_attentions=outputs.decoder_attentions,
