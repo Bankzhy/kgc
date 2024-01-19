@@ -49,6 +49,11 @@ class RuntimeArguments:
         metadata={'help': "The dataset directory."}
     )
 
+    model_root: str = field(
+        default=r"output/models",
+        metadata={'help': "The dataset directory."}
+    )
+
     checkpoint_root: str = field(
         default=r"output/checkpoints",
         metadata={'help': "The dataset directory."}
@@ -94,12 +99,12 @@ class RuntimeArguments:
     )
 
     batch_size: int = field(
-        default=16,
+        default=4,
         metadata={'help': 'Batch size for training on each device'}
     )
 
     eval_batch_size: int = field(
-        default=16,
+        default=4,
         metadata={'help': 'Batch size for evaluation on each device'}
     )
 

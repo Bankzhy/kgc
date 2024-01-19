@@ -6,16 +6,17 @@ sys.path.append(curPath)
 print("当前的工作目录：",os.getcwd())
 print("python搜索模块的路径集合",sys.path)
 import torch
-from transformers import Seq2SeqTrainingArguments, SchedulerType, IntervalStrategy
+from transformers import Seq2SeqTrainingArguments, SchedulerType, IntervalStrategy, BartForConditionalGeneration, \
+    BartConfig
 import argparse
 import enums
 from typing import Union, Tuple
 
 from data_preprocessing.pretrain.CodeDataset import CodeDataset
 from data_preprocessing.pretrain.vocab import Vocab
-from model.configuration_bart import BartConfig
+# from model.configuration_bart import BartConfig
 from model.general import human_format, count_params, layer_wise_parameters
-from model.modeling_bart import BartForConditionalGeneration
+# from model.modeling_bart import BartForConditionalGeneration
 from pretrain.callbacks import LogStateCallBack
 from pretrain.spt_args import add_args
 from pretrain.trainer import CodeTrainer
