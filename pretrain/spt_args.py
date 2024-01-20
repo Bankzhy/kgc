@@ -35,7 +35,7 @@ class RuntimeArguments:
         metadata={'help': "The output directory where the model predictions and checkpoints will be written."}
     )
     trained_vocab: str = field(
-        default='r"../dataset/tokeniazers"',
+        default='"../dataset/tokeniazers"',
         metadata={'help': 'Directory of trained vocabs'}
     )
 
@@ -84,6 +84,14 @@ class RuntimeArguments:
 
     output_max_len: int = field(
         default=128
+    )
+    max_code_len: int = field(
+        default=256,
+        metadata={'help': 'Maximum length of code sequence'}
+    )
+    max_nl_len: int = field(
+        default=128,
+        metadata={'help': 'Maximum length of the nl sequence'}
     )
     code_vocab_size: int = field(
         default=50000,
@@ -165,6 +173,11 @@ class RuntimeArguments:
         default=True,
         metadata={'action': 'store_true',
                   'help': 'Whether to use mixed precision'}
+    )
+
+    mass_mask_ratio: float = field(
+        default=0.5,
+        metadata={'help': 'Ratio between number of masked tokens and number of total tokens, in MASS'}
     )
 
 

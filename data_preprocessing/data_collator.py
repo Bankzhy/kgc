@@ -29,20 +29,20 @@ def collate_fn(batch, args, task, code_vocab, nl_vocab, ast_vocab=None):
     # mass
     if task == enums.TASK_MASS:
 
-        code_raw, ast_raw, name_raw, target_raw = map(list, zip(*batch))
+        code_raw, target_raw = map(list, zip(*batch))
 
         model_inputs['input_ids'], model_inputs['attention_mask'] = get_concat_batch_inputs(
             code_raw=code_raw,
             code_vocab=code_vocab,
             max_code_len=args.max_code_len,
-            ast_raw=ast_raw,
+            ast_raw=None,
             ast_vocab=ast_vocab,
-            max_ast_len=args.max_ast_len,
-            nl_raw=name_raw,
+            max_ast_len=0,
+            nl_raw=None,
             nl_vocab=nl_vocab,
             max_nl_len=args.max_nl_len,
-            no_ast=args.no_ast,
-            no_nl=args.no_nl
+            no_ast=True,
+            no_nl=True
         )
         model_inputs['decoder_input_ids'], model_inputs['decoder_attention_mask'] = get_batch_inputs(
             batch=target_raw,
@@ -57,29 +57,29 @@ def collate_fn(batch, args, task, code_vocab, nl_vocab, ast_vocab=None):
     # nsp
     elif task == enums.TASK_NSP:
 
-        code_raw, ast_raw, nl_raw, name_raw = map(list, zip(*batch))
+        code_raw, nl_raw = map(list, zip(*batch))
 
         model_inputs['input_ids'], model_inputs['attention_mask'] = get_concat_batch_inputs(
             code_raw=code_raw,
             code_vocab=code_vocab,
             max_code_len=args.max_code_len,
-            ast_raw=ast_raw,
+            ast_raw=None,
             ast_vocab=ast_vocab,
-            max_ast_len=args.max_ast_len,
-            nl_raw=nl_raw,
+            max_ast_len=0,
+            nl_raw=None,
             nl_vocab=nl_vocab,
             max_nl_len=args.max_nl_len,
-            no_ast=args.no_ast,
-            no_nl=args.no_nl
+            no_ast=True,
+            no_nl=True
         )
 
         model_inputs['decoder_input_ids'], model_inputs['decoder_attention_mask'] = get_batch_inputs(
-            batch=name_raw,
+            batch=nl_raw,
             vocab=nl_vocab,
             processor=Vocab.sos_processor,
             max_len=args.max_nl_len
         )
-        model_inputs['labels'], _ = get_batch_inputs(batch=name_raw,
+        model_inputs['labels'], _ = get_batch_inputs(batch=nl_raw,
                                                      vocab=nl_vocab,
                                                      processor=Vocab.eos_processor,
                                                      max_len=args.max_nl_len)
@@ -96,10 +96,10 @@ def collate_fn(batch, args, task, code_vocab, nl_vocab, ast_vocab=None):
             max_code_len=args.max_code_len,
             ast_vocab=ast_vocab,
             max_ast_len=args.max_ast_len,
-            nl_vocab=nl_vocab,
+            nl_vocab=None,
             max_nl_len=args.max_nl_len,
             no_ast=True,
-            no_nl=args.no_nl
+            no_nl=True
         )
 
         model_inputs['decoder_input_ids'], model_inputs['decoder_attention_mask'] = get_batch_inputs(
