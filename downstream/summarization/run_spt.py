@@ -12,16 +12,17 @@ from downstream.summarization.eval.metrics import avg_ir_metrics, bleu
 from downstream.summarization.spt_args import add_args
 
 import torch
-from transformers import Seq2SeqTrainingArguments, SchedulerType, IntervalStrategy, EarlyStoppingCallback
+from transformers import Seq2SeqTrainingArguments, SchedulerType, IntervalStrategy, EarlyStoppingCallback, \
+    BartForConditionalGeneration, BartConfig
 import argparse
 import enums
 from typing import Union, Tuple
 
 from data_preprocessing.pretrain.CodeDataset import CodeDataset
 from data_preprocessing.pretrain.vocab import Vocab, load_vocab
-from model.configuration_bart import BartConfig
+# from model.configuration_bart import BartConfig
 from model.general import human_format, count_params, layer_wise_parameters
-from model.modeling_bart import BartForConditionalGeneration
+# from model.modeling_bart import BartForConditionalGeneration
 from pretrain.callbacks import LogStateCallBack
 from pretrain.trainer import CodeTrainer
 
@@ -212,6 +213,8 @@ def run_summarization(args,
                                              predict_with_generate=True)
     trainer = CodeTrainer(main_args=args,
                           task=enums.TASK_SUMMARIZATION,
+                          code_vocab=code_vocab,
+                          nl_vocab=nl_vocab,
                           model=model,
                           args=training_args,
                           data_collator=None,

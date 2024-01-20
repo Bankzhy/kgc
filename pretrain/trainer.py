@@ -6,15 +6,17 @@ from transformers import Seq2SeqTrainer, Trainer
 import argparse
 from typing import Optional
 
-from .data_collator import collate_fn
+from data_preprocessing.data_collator import collate_fn
 
 
 class CodeTrainer(Seq2SeqTrainer):
 
-    def __init__(self, main_args: argparse.Namespace, task, **kwargs):
+    def __init__(self, main_args: argparse.Namespace, task, code_vocab, nl_vocab, **kwargs):
         super(CodeTrainer, self).__init__(**kwargs)
         self.main_args = main_args
         self.task = task
+        self.code_vocab = code_vocab
+        self.nl_vocab = nl_vocab
 
     def get_train_dataloader(self) -> DataLoader:
         """
@@ -31,6 +33,8 @@ class CodeTrainer(Seq2SeqTrainer):
                           shuffle=True,
                           collate_fn=lambda batch: collate_fn(batch,
                                                               args=self.main_args,
+                                                              code_vocab=self.code_vocab,
+                                                              nl_vocab=self.nl_vocab,
                                                               task=self.task))
 
     def get_eval_dataloader(self, eval_dataset: Optional[Dataset] = None) -> DataLoader:
@@ -40,6 +44,8 @@ class CodeTrainer(Seq2SeqTrainer):
                           batch_size=self.main_args.eval_batch_size,
                           collate_fn=lambda batch: collate_fn(batch,
                                                               args=self.main_args,
+                                                              code_vocab=self.code_vocab,
+                                                              nl_vocab=self.nl_vocab,
                                                               task=self.task))
 
     def get_test_dataloader(self, test_dataset: Dataset) -> DataLoader:
