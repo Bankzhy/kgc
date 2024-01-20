@@ -70,7 +70,7 @@ class RuntimeArguments:
     )
 
     trained_model: str = field(
-        default='pretrain_model/s2/model',
+        default='pretrain_model/s1/model',
         metadata={'help': 'Directory of trained model'}
     )
 
@@ -99,12 +99,12 @@ class RuntimeArguments:
     )
 
     batch_size: int = field(
-        default=4,
+        default=32,
         metadata={'help': 'Batch size for training on each device'}
     )
 
     eval_batch_size: int = field(
-        default=4,
+        default=32,
         metadata={'help': 'Batch size for evaluation on each device'}
     )
 
