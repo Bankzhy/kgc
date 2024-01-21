@@ -73,7 +73,10 @@ BART_PRETRAINED_MODEL_ARCHIVE_LIST = [
     "facebook/bart-large",
     # see all BART models at https://huggingface.co/models?filter=bart
 ]
-
+def invert_mask(attention_mask):
+    """Turns 1->0, 0->1, False->True, True-> False"""
+    assert attention_mask.dim() == 2
+    return attention_mask.eq(0)
 
 def shift_tokens_right(input_ids: torch.Tensor, pad_token_id: int, decoder_start_token_id: int):
     """
@@ -766,6 +769,7 @@ class BartEncoder(BartPretrainedModel):
         self,
         input_ids: torch.LongTensor = None,
         input_entity_ids=None,
+        word_mask: Optional[torch.Tensor]=None,
         attention_mask: Optional[torch.Tensor] = None,
         head_mask: Optional[torch.Tensor] = None,
         inputs_embeds: Optional[torch.FloatTensor] = None,
@@ -825,6 +829,13 @@ class BartEncoder(BartPretrainedModel):
             input = inputs_embeds[:, :, -1]
         else:
             raise ValueError("You have to specify either input_ids or inputs_embeds")
+
+        # KGC
+        # if attention_mask is not None:
+        #     attention_mask = invert_mask(attention_mask)
+
+        if word_mask is not None:
+            word_mask = invert_mask(word_mask)
 
         if inputs_embeds is None:
             inputs_embeds = self.embed_tokens(input_ids) * self.embed_scale
@@ -890,12 +901,13 @@ class BartEncoder(BartPretrainedModel):
                             output_attentions=output_attentions,
                         )
                     else:
-                        hidden_states = hidden_states.transpose(0, 1)
+                        if idx == int(self.config.encoder_layers / 2):
+                            hidden_states = hidden_states.transpose(0, 1)
                         layer_outputs = encoder_layer(
                             hidden_states,
                             entity_embeds,
                             attention_mask,
-                            word_mask=attention_mask,
+                            word_mask=word_mask,
                             word_subword=None,
                             output_attentions=output_attentions,
                         )
@@ -1247,6 +1259,7 @@ class KGCBartModel(BartPretrainedModel):
         self,
         input_ids: torch.LongTensor = None,
         input_entity_ids=None,
+        word_mask: Optional[torch.Tensor]=None,
         attention_mask: Optional[torch.Tensor] = None,
         decoder_input_ids: Optional[torch.LongTensor] = None,
         decoder_attention_mask: Optional[torch.LongTensor] = None,
@@ -1287,6 +1300,7 @@ class KGCBartModel(BartPretrainedModel):
             encoder_outputs = self.encoder(
                 input_ids=input_ids,
                 input_entity_ids=input_entity_ids,
+                word_mask=word_mask,
                 attention_mask=attention_mask,
                 head_mask=head_mask,
                 inputs_embeds=inputs_embeds,
@@ -1387,6 +1401,7 @@ class KGCBartForConditionalGeneration(BartPretrainedModel):
         self,
         input_ids: torch.LongTensor = None,
         input_entity_ids: torch.LongTensor = None,
+        word_mask: Optional[torch.Tensor] = None,
         attention_mask: Optional[torch.Tensor] = None,
         decoder_input_ids: Optional[torch.LongTensor] = None,
         decoder_attention_mask: Optional[torch.LongTensor] = None,
@@ -1425,6 +1440,7 @@ class KGCBartForConditionalGeneration(BartPretrainedModel):
         outputs = self.model(
             input_ids,
             input_entity_ids,
+            word_mask=word_mask,
             attention_mask=attention_mask,
             decoder_input_ids=decoder_input_ids,
             encoder_outputs=encoder_outputs,

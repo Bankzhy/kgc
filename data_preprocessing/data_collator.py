@@ -47,7 +47,7 @@ def collate_fn(batch, args, task, entity_dict, code_vocab, nl_vocab, ast_vocab=N
         )
 
         # model_inputs['input_entity_ids'] = get_entity_ids(input_tokens=code_raw.split(), entity_dict=entity_dict)
-        model_inputs['input_entity_ids'] = get_batch_entity_ids(args=args, input_tokens=code_raw, entity_dict=entity_dict)
+        model_inputs['input_entity_ids'], model_inputs['word_mask'] = get_batch_entity_ids(args=args, input_tokens=code_raw, entity_dict=entity_dict)
         model_inputs['decoder_input_ids'], model_inputs['decoder_attention_mask'] = get_batch_inputs(
             batch=target_raw,
             vocab=code_vocab,
@@ -274,16 +274,20 @@ def pad_batch(batch, pad_value=0):
 
 def get_batch_entity_ids(args, input_tokens, entity_dict):
     batch_tokens = []
+    word_masks = []
     for item in input_tokens:
         item_tokens = item.split()
-        item_token = get_entity_ids(args, item_tokens, entity_dict)
+        item_token, word_mask = get_entity_ids(args, item_tokens, entity_dict)
         batch_tokens.append(item_token)
+        word_masks.append(word_mask)
 
     batch_tokens = torch.tensor(batch_tokens)
-    return batch_tokens
+    word_masks = torch.tensor(word_masks)
+    return batch_tokens, word_masks
 
 def get_entity_ids(args, input_token, entity_dict):
     input_entity_ids = []
+    word_mask = []
     no_match_entity_id = 0
     for t in input_token:
         pt = remove_special_characters(t)
@@ -299,10 +303,14 @@ def get_entity_ids(args, input_token, entity_dict):
     if len(input_entity_ids) < args.max_code_len:
         n_pad = args.max_code_len - len(input_entity_ids)
         input_entity_ids.extend([0] * n_pad)
+
+        word_mask = [1] * (args.max_code_len - n_pad)
+        word_mask.extend([0] * n_pad)
     else:
         input_entity_ids = input_entity_ids[:args.max_code_len]
+        word_mask = [1] * len(input_entity_ids)
 
-    return input_entity_ids
+    return input_entity_ids, word_mask
 
 def match_expose_token(token, entity_dict):
     n_l = split_camel(token)
