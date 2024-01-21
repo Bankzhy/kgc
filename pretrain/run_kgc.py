@@ -5,7 +5,6 @@ import sys
 
 import numpy as np
 
-from model.modeling_kgcbart import KGCBartForConditionalGeneration
 
 curPath = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
 sys.path.append(curPath)
@@ -19,6 +18,7 @@ from typing import Union, Tuple
 
 from data_preprocessing.pretrain.CodeDataset import CodeDataset
 from data_preprocessing.pretrain.vocab import Vocab, load_vocab
+from model.modeling_kgcbart import KGCBartForConditionalGeneration
 from model.configuration_bart import BartConfig
 from model.general import human_format, count_params, layer_wise_parameters
 from model.modeling_bart import BartForConditionalGeneration
