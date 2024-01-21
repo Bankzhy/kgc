@@ -144,12 +144,12 @@ class RuntimeArguments:
     )
 
     batch_size: int = field(
-        default=16,
+        default=12,
         metadata={'help': 'Batch size for training on each device'}
     )
 
     eval_batch_size: int = field(
-        default=16,
+        default=12,
         metadata={'help': 'Batch size for evaluation on each device'}
     )
 
