@@ -24,6 +24,7 @@ import torch.utils.checkpoint
 import torch.nn.functional as F
 from torch import nn, Tensor
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
+from .modeling_utils import PreTrainedModel
 
 from .activations import ACT2FN
 from pretrain import slogging
@@ -36,7 +37,8 @@ from .modeling_outputs import (
     Seq2SeqQuestionAnsweringModelOutput,
     Seq2SeqSequenceClassifierOutput,
 )
-from .modeling_utils import PreTrainedModel
+# from .modeling_utils import PreTrainedModel
+
 from .file_utils import (
     add_code_sample_docstrings,
     add_end_docstrings,
@@ -747,7 +749,7 @@ class BartEncoder(BartPretrainedModel):
                 layers.append(BartEncoderLayer(config))
             else:
                 layers.append(EncoderGATLayer(config))
-
+        self.layers = nn.ModuleList(layers)
         self.layernorm_embedding = nn.LayerNorm(embed_dim)
 
         self.gradient_checkpointing = False
@@ -833,6 +835,12 @@ class BartEncoder(BartPretrainedModel):
         hidden_states = inputs_embeds + embed_pos
         hidden_states = self.layernorm_embedding(hidden_states)
         hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
+        # hidden_states = hidden_states.transpose(0, 1)
+
+        # KGC
+        entity_embeds = self.embed_entitys(input_entity_ids)
+        entity_embeds = F.dropout(entity_embeds, p=self.dropout, training=self.training)
+        entity_embeds = entity_embeds.transpose(0, 1)
 
         # expand attention_mask
         if attention_mask is not None:
@@ -873,12 +881,24 @@ class BartEncoder(BartPretrainedModel):
                         (head_mask[idx] if head_mask is not None else None),
                     )
                 else:
-                    layer_outputs = encoder_layer(
-                        hidden_states,
-                        attention_mask,
-                        layer_head_mask=(head_mask[idx] if head_mask is not None else None),
-                        output_attentions=output_attentions,
-                    )
+                    # KGC
+                    if idx < int(self.config.encoder_layers / 2):
+                        layer_outputs = encoder_layer(
+                            hidden_states,
+                            attention_mask,
+                            layer_head_mask=(head_mask[idx] if head_mask is not None else None),
+                            output_attentions=output_attentions,
+                        )
+                    else:
+                        hidden_states = hidden_states.transpose(0, 1)
+                        layer_outputs = encoder_layer(
+                            hidden_states,
+                            entity_embeds,
+                            attention_mask,
+                            word_mask=attention_mask,
+                            word_subword=None,
+                            output_attentions=output_attentions,
+                        )
 
                 hidden_states = layer_outputs[0]
 
@@ -1196,7 +1216,7 @@ class KGCBartModel(BartPretrainedModel):
         self.shared_relation = nn.Embedding(relation_weight.shape[0], relation_weight.shape[1], padding_idx=padding_idx)
         self.shared_relation.weight.requires_grad = False
 
-        self.encoder = BartEncoder(config, self.shared)
+        self.encoder = BartEncoder(config, self.shared, self.shared_entity, self.shared_relation)
         self.decoder = BartDecoder(config, self.shared)
 
         # Initialize weights and apply final processing
@@ -1266,6 +1286,7 @@ class KGCBartModel(BartPretrainedModel):
         if encoder_outputs is None:
             encoder_outputs = self.encoder(
                 input_ids=input_ids,
+                input_entity_ids=input_entity_ids,
                 attention_mask=attention_mask,
                 head_mask=head_mask,
                 inputs_embeds=inputs_embeds,
@@ -1326,7 +1347,7 @@ class KGCBartForConditionalGeneration(BartPretrainedModel):
 
     def __init__(self, config: BartConfig, entity_weight, relation_weight):
         super().__init__(config)
-        self.model = KGCBartModel(config)
+        self.model = KGCBartModel(config, entity_weight, relation_weight)
         self.register_buffer("final_logits_bias", torch.zeros((1, self.model.shared.num_embeddings)))
         self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
 
@@ -1365,6 +1386,7 @@ class KGCBartForConditionalGeneration(BartPretrainedModel):
     def forward(
         self,
         input_ids: torch.LongTensor = None,
+        input_entity_ids: torch.LongTensor = None,
         attention_mask: Optional[torch.Tensor] = None,
         decoder_input_ids: Optional[torch.LongTensor] = None,
         decoder_attention_mask: Optional[torch.LongTensor] = None,
@@ -1402,6 +1424,7 @@ class KGCBartForConditionalGeneration(BartPretrainedModel):
 
         outputs = self.model(
             input_ids,
+            input_entity_ids,
             attention_mask=attention_mask,
             decoder_input_ids=decoder_input_ids,
             encoder_outputs=encoder_outputs,
@@ -2015,7 +2038,9 @@ class EncoderGATLayer(nn.Module):
         x = residual + x
         if not self.normalize_before:
             x = self.final_layer_norm(x)
-        return x, attn_weights
+
+        output = (x, attn_weights)
+        return output
 
 
 class GATSelfAttention(nn.Module):

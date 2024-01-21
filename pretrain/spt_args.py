@@ -45,7 +45,7 @@ class RuntimeArguments:
     )
 
     kg_path: str = field(
-        default=r"../dataset/kg",
+        default=r"../dataset/kg768",
         metadata={'help': "The KG directory."}
     )
     dataset_dir: str = field(
@@ -144,12 +144,12 @@ class RuntimeArguments:
     )
 
     batch_size: int = field(
-        default=32,
+        default=16,
         metadata={'help': 'Batch size for training on each device'}
     )
 
     eval_batch_size: int = field(
-        default=32,
+        default=16,
         metadata={'help': 'Batch size for evaluation on each device'}
     )
 

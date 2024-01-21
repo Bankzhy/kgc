@@ -1,3 +1,4 @@
+import re
 
 import torch
 
@@ -8,7 +9,7 @@ from .pretrain.vocab import Vocab
 import enums
 
 
-def collate_fn(batch, args, task, code_vocab, nl_vocab, ast_vocab=None):
+def collate_fn(batch, args, task, entity_dict, code_vocab, nl_vocab, ast_vocab=None):
     """
     Data collator function.
 
@@ -44,6 +45,9 @@ def collate_fn(batch, args, task, code_vocab, nl_vocab, ast_vocab=None):
             no_ast=True,
             no_nl=True
         )
+
+        # model_inputs['input_entity_ids'] = get_entity_ids(input_tokens=code_raw.split(), entity_dict=entity_dict)
+        model_inputs['input_entity_ids'] = get_batch_entity_ids(args=args, input_tokens=code_raw, entity_dict=entity_dict)
         model_inputs['decoder_input_ids'], model_inputs['decoder_attention_mask'] = get_batch_inputs(
             batch=target_raw,
             vocab=code_vocab,
@@ -267,3 +271,56 @@ def pad_batch(batch, pad_value=0):
     """
     batch = list(zip(*itertools.zip_longest(*batch, fillvalue=pad_value)))
     return torch.tensor([list(b) for b in batch]).long()
+
+def get_batch_entity_ids(args, input_tokens, entity_dict):
+    batch_tokens = []
+    for item in input_tokens:
+        item_tokens = item.split()
+        item_token = get_entity_ids(args, item_tokens, entity_dict)
+        batch_tokens.append(item_token)
+
+    batch_tokens = torch.tensor(batch_tokens)
+    return batch_tokens
+
+def get_entity_ids(args, input_token, entity_dict):
+    input_entity_ids = []
+    no_match_entity_id = 0
+    for t in input_token:
+        pt = remove_special_characters(t)
+        if pt in entity_dict.keys():
+            tid = entity_dict[pt]
+            input_entity_ids.append(tid)
+        else:
+            tid = match_expose_token(pt, entity_dict)
+            if tid is not None:
+                input_entity_ids.append(tid)
+            else:
+                input_entity_ids.append(no_match_entity_id)
+    if len(input_entity_ids) < args.max_code_len:
+        n_pad = args.max_code_len - len(input_entity_ids)
+        input_entity_ids.extend([0] * n_pad)
+    else:
+        input_entity_ids = input_entity_ids[:args.max_code_len]
+
+    return input_entity_ids
+
+def match_expose_token(token, entity_dict):
+    n_l = split_camel(token)
+    token_ids = []
+    for word in n_l:
+        if word in entity_dict.keys():
+            tid = entity_dict[word]
+            token_ids.append(tid)
+    if len(token_ids) > 0:
+        return token_ids[len(token_ids)-1]
+    else:
+        return None
+
+def remove_special_characters(input_string):
+    # Use a regular expression to remove all non-alphanumeric characters
+    return re.sub(r'[^a-zA-Z0-9]', '', input_string)
+
+def split_camel(phrase):
+    # Split the phrase based on camel case
+    split_phrase = re.findall(r'[A-Z](?:[a-z]+|$)', phrase)
+    return split_phrase

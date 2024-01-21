@@ -27,7 +27,7 @@ from tqdm import tqdm
 import enums
 from data_preprocessing.pretrain.CodeDataset import CodeDataset
 from data_preprocessing.pretrain.vocab import load_vocab, init_vocab
-from model import KGBartForConditionalGeneration
+from model.modeling_kgbart import KGBartForConditionalGeneration
 from model.configuration_bart import BartConfig
 from cnn.data_parallel import DataParallelImbalance
 from pretrain.pretrain_args import add_pretrain_args
