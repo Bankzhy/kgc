@@ -46,8 +46,9 @@ def collate_fn(batch, args, task, entity_dict, code_vocab, nl_vocab, ast_vocab=N
             no_nl=True
         )
 
-        # model_inputs['input_entity_ids'] = get_entity_ids(input_tokens=code_raw.split(), entity_dict=entity_dict)
+
         model_inputs['input_entity_ids'], model_inputs['word_mask'] = get_batch_entity_ids(args=args, input_tokens=code_raw, entity_dict=entity_dict)
+
         model_inputs['decoder_input_ids'], model_inputs['decoder_attention_mask'] = get_batch_inputs(
             batch=target_raw,
             vocab=code_vocab,
@@ -77,6 +78,10 @@ def collate_fn(batch, args, task, entity_dict, code_vocab, nl_vocab, ast_vocab=N
             no_nl=True
         )
 
+        model_inputs['input_entity_ids'], model_inputs['word_mask'] = get_batch_entity_ids(args=args,
+                                                                                           input_tokens=code_raw,
+                                                                                           entity_dict=entity_dict)
+
         model_inputs['decoder_input_ids'], model_inputs['decoder_attention_mask'] = get_batch_inputs(
             batch=nl_raw,
             vocab=nl_vocab,
@@ -105,6 +110,10 @@ def collate_fn(batch, args, task, entity_dict, code_vocab, nl_vocab, ast_vocab=N
             no_ast=True,
             no_nl=True
         )
+
+        model_inputs['input_entity_ids'], model_inputs['word_mask'] = get_batch_entity_ids(args=args,
+                                                                                           input_tokens=code_raw,
+                                                                                           entity_dict=entity_dict)
 
         model_inputs['decoder_input_ids'], model_inputs['decoder_attention_mask'] = get_batch_inputs(
             batch=nl_raw,
