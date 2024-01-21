@@ -81,7 +81,7 @@ def pre_train(args,
             logger=logger,
             entity_dict=entity_dict,
             dataset_type='train',
-            task=enums.TASK_NSP,
+            task=enums.TASK_MASS,
             language='java',
     )
     logger.info(f'The size of pre_training set: {len(dataset)}')
