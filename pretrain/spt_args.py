@@ -205,7 +205,7 @@ class OptimizerArguments:
     )
 
     warmup_steps: int = field(
-        default=0,
+        default=1000,
         metadata={'help': 'Warmup steps for optimizer, 0 to disable'}
     )
 
