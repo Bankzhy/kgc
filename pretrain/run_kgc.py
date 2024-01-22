@@ -185,7 +185,8 @@ def pre_train(args,
                                                      logging_dir=os.path.join(args.tensor_board_root, task),
                                                      logging_strategy=IntervalStrategy.STEPS,
                                                      logging_steps=args.logging_steps,
-                                                     save_strategy=IntervalStrategy.NO,
+                                                     save_strategy=IntervalStrategy.EPOCH,
+                                                     save_total_limit=2,
                                                      seed=args.random_seed,
                                                      fp16=args.fp16,
                                                      dataloader_drop_last=False,
@@ -216,7 +217,7 @@ def pre_train(args,
             logger.info(f'Start pre-training task: {task}')
             # model device
             logger.info('Device: {}'.format(next(model.parameters()).device))
-            mass_result = trainer.train()
+            mass_result = trainer.train(resume_from_checkpoint=False)
             logger.info(f'Pre-training task {task} finished')
             trainer.save_model(os.path.join(args.model_root, task))
         elif task == enums.TASK_MASS:
@@ -250,7 +251,8 @@ def pre_train(args,
                                                      logging_dir=os.path.join(args.tensor_board_root, task),
                                                      logging_strategy=IntervalStrategy.STEPS,
                                                      logging_steps=args.logging_steps,
-                                                     save_strategy=IntervalStrategy.NO,
+                                                     save_strategy=IntervalStrategy.EPOCH,
+                                                     save_total_limit=2,
                                                      seed=args.random_seed,
                                                      fp16=args.fp16,
                                                      dataloader_drop_last=False,
@@ -281,7 +283,7 @@ def pre_train(args,
             logger.info(f'Start pre-training task: {task}')
             # model device
             logger.info('Device: {}'.format(next(model.parameters()).device))
-            mass_result = trainer.train()
+            mass_result = trainer.train(resume_from_checkpoint=False)
             logger.info(f'Pre-training task {task} finished')
             trainer.save_model(os.path.join(args.model_root, task))
 
