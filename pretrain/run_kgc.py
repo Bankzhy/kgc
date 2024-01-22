@@ -218,6 +218,8 @@ def pre_train(args,
             # model device
             logger.info('Device: {}'.format(next(model.parameters()).device))
             mass_result = trainer.train()
+            # Recover from checkpoint
+            # mass_result = trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
             logger.info(f'Pre-training task {task} finished')
             trainer.save_model(os.path.join(args.model_root, task))
         elif task == enums.TASK_MASS:
@@ -245,7 +247,7 @@ def pre_train(args,
                                                      learning_rate=args.learning_rate,
                                                      weight_decay=args.lr_decay_rate,
                                                      max_grad_norm=args.grad_clipping_norm,
-                                                     num_train_epochs=10,
+                                                     num_train_epochs=5,
                                                      lr_scheduler_type=SchedulerType.LINEAR,
                                                      warmup_steps=args.warmup_steps,
                                                      logging_dir=os.path.join(args.tensor_board_root, task),
@@ -283,7 +285,10 @@ def pre_train(args,
             logger.info(f'Start pre-training task: {task}')
             # model device
             logger.info('Device: {}'.format(next(model.parameters()).device))
-            mass_result = trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
+
+            # Recover from checkpoint
+            # mass_result = trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
+            mass_result = trainer.train()
             logger.info(f'Pre-training task {task} finished')
             trainer.save_model(os.path.join(args.model_root, task))
 
