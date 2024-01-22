@@ -26,6 +26,10 @@ class RuntimeArguments:
         default="output",
         metadata={'help': "The output directory where the model predictions and checkpoints will be written."}
     )
+    resume_from_checkpoint: str = field(
+        default="output/nsp/checkpoint-205",
+        metadata={'help': "The output directory where the model predictions and checkpoints will be written."}
+    )
     tensor_board_root: str = field(
         default="output/run",
         metadata={'help': "The output directory where the model predictions and checkpoints will be written."}

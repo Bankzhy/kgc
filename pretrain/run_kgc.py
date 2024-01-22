@@ -283,7 +283,7 @@ def pre_train(args,
             logger.info(f'Start pre-training task: {task}')
             # model device
             logger.info('Device: {}'.format(next(model.parameters()).device))
-            mass_result = trainer.train()
+            mass_result = trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
             logger.info(f'Pre-training task {task} finished')
             trainer.save_model(os.path.join(args.model_root, task))
 
