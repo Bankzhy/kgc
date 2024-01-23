@@ -1,6 +1,9 @@
 import logging
 import os
+import pickle
 import sys
+
+import numpy as np
 
 curPath = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
 sys.path.append(curPath)
@@ -21,7 +24,7 @@ from data_preprocessing.pretrain.CodeDataset import CodeDataset
 from data_preprocessing.pretrain.vocab import Vocab, load_vocab
 from model.configuration_bart import BartConfig
 from model.general import human_format, count_params, layer_wise_parameters
-from model.modeling_bart import BartForConditionalGeneration
+from model.modeling_kgcbart import KGCBartForConditionalGeneration
 from pretrain.callbacks import LogStateCallBack
 from pretrain.trainer import CodeTrainer
 
@@ -40,7 +43,7 @@ def load_entity_dict(args):
     return dict
 
 def run_summarization(args,
-              trained_model: Union[BartForConditionalGeneration, str] = None,
+              trained_model: Union[KGCBartForConditionalGeneration, str] = None,
               trained_vocab: Union[Tuple[Vocab, Vocab, Vocab], str] = None):
     tasks = args.pre_train_tasks
     trained_model = args.trained_model
@@ -61,7 +64,7 @@ def run_summarization(args,
 
     assert not trained_model or \
         isinstance(trained_model, str) or \
-        isinstance(trained_model, BartForConditionalGeneration), \
+        isinstance(trained_model, KGCBartForConditionalGeneration), \
         f'The model type is not supported, expect Bart model or string of model dir, got {type(trained_model)}'
 
     if trained_vocab is None and args.trained_vocab is not None:
@@ -130,15 +133,24 @@ def run_summarization(args,
     # Model
     # --------------------------------------------------
     logger.info('-' * 100)
+
+    # Prepare model
+    entity_embedding_path = os.path.join(args.kg_path, 'entity_embedding')
+    relation_embedding_path = os.path.join(args.kg_path, 'relation_embedding')
+    entity_embedding = np.array(pickle.load(open(entity_embedding_path, "rb")))
+    entity_embedding = np.array(list(np.zeros((4, 768))) + list(entity_embedding))
+    relation_embedding = np.array(pickle.load(open(relation_embedding_path, "rb")))
+
+
     if trained_model:
-        if isinstance(trained_model, BartForConditionalGeneration):
+        if isinstance(trained_model, KGCBartForConditionalGeneration):
             logger.info('Model is passed through parameter')
             model = trained_model
         else:
             logger.info('Loading the model from file')
             config = BartConfig.from_json_file(os.path.join(trained_model, 'config.json'))
-            model = BartForConditionalGeneration.from_pretrained(os.path.join(trained_model, 'pytorch_model.bin'),
-                                                                       config=config)
+            model = KGCBartForConditionalGeneration.from_pretrained(os.path.join(trained_model, 'pytorch_model.bin'),
+                                                                       config=config, entity_weight=entity_embedding, relation_weight=relation_embedding)
     # log model statistic
     logger.info('Model trainable parameters: {}'.format(human_format(count_params(model))))
     table = layer_wise_parameters(model)
