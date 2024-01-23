@@ -40,7 +40,7 @@ class RuntimeArguments:
     )
 
     kg_path: str = field(
-        default=r"../../dataset/kg",
+        default=r"../../dataset/kg768",
         metadata={'help': "The KG directory."}
     )
 
