@@ -193,7 +193,7 @@ def pre_train(args,
                                                      dataloader_drop_last=False,
                                                      run_name=args.model_name,
                                                      load_best_model_at_end=False,
-                                                     ignore_data_skip=False,
+                                                     ignore_data_skip=True,
                                                      label_smoothing_factor=args.label_smoothing,
                                                      report_to=['tensorboard'],
                                                      dataloader_pin_memory=True)
