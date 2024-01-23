@@ -130,22 +130,22 @@ def collate_fn(batch, args, task, entity_dict, code_vocab, nl_vocab, ast_vocab=N
         )
     # clone detection
     elif task == enums.TASK_CLONE_DETECTION:
-        pass
+        code_1_raw, code_2_raw, labels = map(list, zip(*batch))
         # code_1_raw, ast_1_raw, name_1_raw, code_2_raw, ast_2_raw, name_2_raw, labels = map(list, zip(*batch))
         #
-        # model_inputs['input_ids'], model_inputs['attention_mask'] = get_concat_batch_inputs(
-        #     code_raw=code_1_raw,
-        #     code_vocab=code_vocab,
-        #     max_code_len=args.max_code_len,
-        #     ast_raw=ast_1_raw,
-        #     ast_vocab=ast_vocab,
-        #     max_ast_len=args.max_ast_len,
-        #     nl_raw=name_1_raw,
-        #     nl_vocab=nl_vocab,
-        #     max_nl_len=args.max_nl_len,
-        #     no_ast=args.no_ast,
-        #     no_nl=args.no_nl
-        # )
+        model_inputs['input_ids'], model_inputs['attention_mask'] = get_concat_batch_inputs(
+            code_raw=code_1_raw,
+            code_vocab=code_vocab,
+            max_code_len=args.max_code_len,
+            ast_raw=None,
+            ast_vocab=ast_vocab,
+            max_ast_len=args.max_ast_len,
+            nl_raw=None,
+            nl_vocab=nl_vocab,
+            max_nl_len=args.max_nl_len,
+            no_ast=True,
+            no_nl=True
+        )
         # model_inputs['decoder_input_ids'], model_inputs['decoder_attention_mask'] = get_concat_batch_inputs(
         #     code_raw=code_2_raw,
         #     code_vocab=code_vocab,

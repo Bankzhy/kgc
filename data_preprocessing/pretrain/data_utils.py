@@ -2,8 +2,11 @@ import json
 import os
 import logging
 import re
-
+import tokenize
+from io import StringIO
 from tqdm import tqdm
+import enums
+import nltk
 
 logger = logging.getLogger(__name__)
 STRING_MATCHING_PATTERN = re.compile(r'([bruf]*)(\"\"\"|\'\'\'|\"|\')(?:(?!\2)(?:\\.|[^\\]))*\2')
@@ -340,3 +343,129 @@ def load_dataset_from_dir(dataset_dir, dataset_type):
     # return paths, languages, all_sources, all_codes, all_names, all_codes_wo_name, all_names_wo_name, \
     #        all_only_names, all_docs
     return paths, languages, all_sources, all_codes, all_docs
+
+def parse_for_clone(path, mapping):
+    """
+    Load and parse for code clone detection.
+
+    Args:
+        path (str): Dataset path
+        mapping (dict[int, str]): Mapping from code id to source code
+
+    Returns:
+        list[str], list[str], list[str], list[str], list[str], list[str], list[int]:
+            - List of source code 1 strings
+            - List of ast 1 strings
+            - List of name 1 strings
+            - List of source code 2 strings
+            - List of ast 2 strings
+            - List of name 2 strings
+            - List of label integers
+
+    """
+    codes_1 = []
+    asts_1 = []
+    names_1 = []
+    codes_2 = []
+    asts_2 = []
+    names_2 = []
+    labels = []
+    with open(path, encoding='utf-8') as f:
+        lines = f.readlines()
+        target_count = len(lines) * 0.1
+        count = 0
+        # lines = random.sample(lines, 1000)
+
+        for line in tqdm(lines):
+            if count > target_count:
+                break
+            id_1, id_2, label = line.split('\t')
+            try:
+                source_1 = mapping[id_1]
+                source_1 = remove_comments_and_docstrings(source_1, lang=enums.LANG_JAVA)
+                source_1 = replace_string_literal(source_1)
+                # ast_1, name_1 = generate_single_ast_nl(source=source_1, lang=enums.LANG_JAVA)
+                code_1 = tokenize_source(source=source_1, lang=enums.LANG_JAVA)
+
+                source_2 = mapping[id_2]
+                source_2 = remove_comments_and_docstrings(source_2, lang=enums.LANG_JAVA)
+                source_2 = replace_string_literal(source_2)
+                # ast_2, name_2 = generate_single_ast_nl(source=source_2, lang=enums.LANG_JAVA)
+                code_2 = tokenize_source(source=source_2, lang=enums.LANG_JAVA)
+
+                label = int(label)
+
+                codes_1.append(code_1)
+                # asts_1.append(ast_1)
+                # names_1.append(name_1)
+                codes_2.append(code_2)
+                # asts_2.append(ast_2)
+                # names_2.append(name_2)
+                labels.append(label)
+                count += 1
+            except Exception as e:
+                # logger.info(str(e))
+                continue
+    return codes_1, asts_1, names_1, codes_2, asts_2, names_2, labels
+
+def tokenize_source(source, lang, use_regular=False):
+    """
+    Tokenize the source code into tokens.
+
+    Args:
+        source (str): Source in string
+        lang (str): Language of source code
+        use_regular (bool): Whether to use regular tokenize method, default to False
+
+    Returns:
+        str: Tokenized code, delimited by whitespace, string literal will be replaced by ``___STR``
+
+    """
+    if use_regular:
+        code = replace_string_literal(regular_tokenize(source))
+        return trim_spaces(code)
+    if lang == enums.LANG_PYTHON:
+        tokens = tokenize.generate_tokens(StringIO(source).readline)
+        code = ' '.join([token.string for token in tokens])
+        code = replace_string_literal(code)
+        return trim_spaces(code)
+    if lang in [enums.LANG_JAVA, enums.LANG_JAVASCRIPT, enums.LANG_PHP, enums.LANG_GO]:
+        input_stream = InputStream(source)
+        lexer = MAPPING_LANG_LEXER[lang](input_stream)
+        tokens = [token.text for token in lexer.getAllTokens()]
+        code = replace_string_literal(' '.join(tokens))
+        return trim_spaces(code)
+    elif lang == enums.LANG_RUBY:
+        tokens = MAPPING_LANG_LEXER[lang].get_pure_tokens(source)
+        code = replace_string_literal(' '.join([token[0] for token in tokens]))
+        return trim_spaces(code)
+    else:
+        # TODO: c# tokenize
+        code = replace_string_literal(regular_tokenize(source))
+        return trim_spaces(code)
+
+def trim_spaces(string):
+    """
+    Replace consecutive spaces with a single whitespace.
+
+    Args:
+        string (str): String
+
+    Returns:
+        str: Replaced string
+    """
+    return re.sub(r'\s+', ' ', string).strip()
+
+
+def regular_tokenize(source: str):
+    """
+    NLTK word tokenize with simple adoptions for source code.
+
+    Args:
+        source (str): Source code string.
+
+    Returns:
+        str: Tokenized code string
+    """
+    source = re.sub(r'(\S)[.=](\S)', r'\1 . \2', source)
+    return ' '.join(nltk.word_tokenize(source))
