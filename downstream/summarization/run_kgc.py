@@ -196,7 +196,6 @@ def run_summarization(args,
                                              do_predict=True,
                                              evaluation_strategy=IntervalStrategy.STEPS,
                                              eval_steps=100,
-                                             eval_accumulation_steps=1,
                                              prediction_loss_only=False,
                                              per_device_train_batch_size=args.batch_size,
                                              per_device_eval_batch_size=args.eval_batch_size,
@@ -244,7 +243,7 @@ def run_summarization(args,
     # --------------------------------------------------
     # train
     # --------------------------------------------------
-    only_test = False
+    only_test = True
     if not only_test:
         logger.info('-' * 100)
         logger.info('Start training')
