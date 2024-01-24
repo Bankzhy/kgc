@@ -109,7 +109,7 @@ class RuntimeArguments:
     )
 
     beam_width: int = field(
-        default=5,
+        default=1,
         metadata={'help': 'Beam width when using beam decoding, 1 to greedy decode'}
     )
 
