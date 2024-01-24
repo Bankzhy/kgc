@@ -5,13 +5,13 @@ import sys
 
 import numpy as np
 
-from model.modeling_kgcnbart import KGCNBartForConditionalGeneration
 
 curPath = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
 sys.path.append(curPath)
 sys.path.append('../..')
 print("当前的工作目录：",os.getcwd())
 print("python搜索模块的路径集合",sys.path)
+from model.modeling_kgcnbart import KGCNBartForConditionalGeneration
 from data_preprocessing.TLDataset import TLDataset
 from downstream.summarization.eval.metrics import avg_ir_metrics, bleu
 from downstream.summarization.spt_args import add_args
