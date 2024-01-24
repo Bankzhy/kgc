@@ -212,6 +212,7 @@ def run_summarization(args,
                                              predict_with_generate=True)
     trainer = CodeTrainer(main_args=args,
                           task=enums.TASK_SUMMARIZATION,
+                          entity_dict=entity_dict,
                           code_vocab=code_vocab,
                           nl_vocab=nl_vocab,
                           model=model,
@@ -229,7 +230,7 @@ def run_summarization(args,
     # --------------------------------------------------
     # train
     # --------------------------------------------------
-    only_test = False
+    only_test = True
     if not only_test:
         logger.info('-' * 100)
         logger.info('Start training')
