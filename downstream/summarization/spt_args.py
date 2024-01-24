@@ -70,7 +70,7 @@ class RuntimeArguments:
     )
 
     trained_model: str = field(
-        default='pretrain_model/s1/model',
+        default='pretrain_model/25',
         metadata={'help': 'Directory of trained model'}
     )
 
@@ -104,12 +104,12 @@ class RuntimeArguments:
     )
 
     eval_batch_size: int = field(
-        default=8,
+        default=16,
         metadata={'help': 'Batch size for evaluation on each device'}
     )
 
     beam_width: int = field(
-        default=1,
+        default=5,
         metadata={'help': 'Beam width when using beam decoding, 1 to greedy decode'}
     )
 

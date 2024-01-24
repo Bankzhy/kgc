@@ -23,6 +23,7 @@ import torch.nn.functional as F
 import torch.utils.checkpoint
 from torch import nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
+from transformers import BartConfig
 
 from transformers.activations import ACT2FN
 from transformers.modeling_attn_mask_utils import (
@@ -51,7 +52,7 @@ from transformers.utils import (
     logging,
     replace_return_docstrings,
 )
-from .configuration_bart import BartConfig
+# from .configuration_bart import BartConfig
 
 
 # if is_flash_attn_2_available():
