@@ -246,7 +246,7 @@ def run_summarization(args,
     # --------------------------------------------------
     # train
     # --------------------------------------------------
-    only_test = True
+    only_test = False
     if not only_test:
         logger.info('-' * 100)
         logger.info('Start training')
