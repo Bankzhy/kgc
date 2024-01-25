@@ -3,6 +3,6 @@ TASK_NSP = 'nsp'
 TASK_SUMMARIZATION = 'summarization'
 TASK_CLONE_DETECTION = 'clone'
 PRE_TRAIN_TASKS = [
-    TASK_MASS,
-    # TASK_NSP
+    # TASK_MASS,
+    TASK_NSP
 ]
