@@ -70,7 +70,7 @@ class RuntimeArguments:
     )
 
     trained_model: str = field(
-        default='pretrain_model/25',
+        default='pretrain_model/26',
         metadata={'help': 'Directory of trained model'}
     )
 

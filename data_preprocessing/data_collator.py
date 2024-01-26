@@ -133,18 +133,11 @@ def collate_fn(batch, args, task, entity_dict, code_vocab, nl_vocab, ast_vocab=N
         code_1_raw, code_2_raw, labels = map(list, zip(*batch))
         # code_1_raw, ast_1_raw, name_1_raw, code_2_raw, ast_2_raw, name_2_raw, labels = map(list, zip(*batch))
         #
-        model_inputs['input_ids'], model_inputs['attention_mask'] = get_concat_batch_inputs(
-            code_raw=code_1_raw,
+        model_inputs['input_ids'], model_inputs['attention_mask'] = get_clone_batch_inputs(
+            code1_raw=code_1_raw,
+            code2_raw=code_2_raw,
             code_vocab=code_vocab,
             max_code_len=args.max_code_len,
-            ast_raw=None,
-            ast_vocab=ast_vocab,
-            max_ast_len=args.max_ast_len,
-            nl_raw=None,
-            nl_vocab=nl_vocab,
-            max_nl_len=args.max_nl_len,
-            no_ast=True,
-            no_nl=True
         )
         # model_inputs['decoder_input_ids'], model_inputs['decoder_attention_mask'] = get_concat_batch_inputs(
         #     code_raw=code_2_raw,
@@ -159,7 +152,7 @@ def collate_fn(batch, args, task, entity_dict, code_vocab, nl_vocab, ast_vocab=N
         #     no_ast=args.no_ast,
         #     no_nl=args.no_nl
         # )
-        # model_inputs['labels'] = torch.tensor(labels, dtype=torch.long)
+        model_inputs['labels'] = torch.tensor(labels, dtype=torch.long)
 
 
     return model_inputs
@@ -280,6 +273,28 @@ def pad_batch(batch, pad_value=0):
     """
     batch = list(zip(*itertools.zip_longest(*batch, fillvalue=pad_value)))
     return torch.tensor([list(b) for b in batch]).long()
+
+def get_clone_batch_inputs(code1_raw, code2_raw, code_vocab, max_code_len):
+    # set post processor
+    code_vocab.tokenizer.post_processor = Vocab.sep_processor
+    # set truncation
+    if max_code_len:
+        code_vocab.tokenizer.enable_truncation(max_length=max_code_len)
+    else:
+        code_vocab.tokenizer.no_truncation()
+    # encode batch
+    inputs1, padding_mask1 = code_vocab.encode_batch(code1_raw, pad=False, max_length=max_code_len)
+    inputs2, padding_mask2 = code_vocab.encode_batch(code1_raw, pad=False, max_length=max_code_len)
+
+    inputs = torch.cat([inputs for inputs in [inputs1, inputs2] if inputs is not None], dim=-1)
+    padding_mask = torch.cat([mask for mask in [padding_mask1, padding_mask2]
+                              if mask is not None], dim=-1)
+
+    # to tensor
+    inputs = torch.tensor(inputs, dtype=torch.long)
+    padding_mask = torch.tensor(padding_mask, dtype=torch.long)
+    return inputs, padding_mask
+
 
 def get_batch_entity_ids(args, input_tokens, entity_dict):
     batch_tokens = []

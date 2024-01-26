@@ -26,7 +26,7 @@ from data_preprocessing.pretrain.CodeDataset import CodeDataset
 from data_preprocessing.pretrain.vocab import Vocab, load_vocab
 from model.configuration_bart import BartConfig
 from model.general import human_format, count_params, layer_wise_parameters
-from model.modeling_kgcbart import KGCBartForConditionalGeneration
+from model.modeling_kgcnbart import KGCNBartForConditionalGeneration
 from pretrain.callbacks import LogStateCallBack
 from pretrain.trainer import CodeTrainer
 
@@ -45,7 +45,7 @@ def load_entity_dict(args):
     return dict
 
 def run_summarization(args,
-              trained_model: Union[KGCBartForConditionalGeneration, str] = None,
+              trained_model: Union[KGCNBartForConditionalGeneration, str] = None,
               trained_vocab: Union[Tuple[Vocab, Vocab, Vocab], str] = None):
     tasks = args.pre_train_tasks
     trained_model = args.trained_model
@@ -66,7 +66,7 @@ def run_summarization(args,
 
     assert not trained_model or \
         isinstance(trained_model, str) or \
-        isinstance(trained_model, KGCBartForConditionalGeneration), \
+        isinstance(trained_model, KGCNBartForConditionalGeneration), \
         f'The model type is not supported, expect Bart model or string of model dir, got {type(trained_model)}'
 
     if trained_vocab is None and args.trained_vocab is not None:
@@ -145,13 +145,13 @@ def run_summarization(args,
 
 
     if trained_model:
-        if isinstance(trained_model, KGCBartForConditionalGeneration):
+        if isinstance(trained_model, KGCNBartForConditionalGeneration):
             logger.info('Model is passed through parameter')
             model = trained_model
         else:
             logger.info('Loading the model from file')
             config = BartConfig.from_json_file(os.path.join(trained_model, 'config.json'))
-            model = KGCBartForConditionalGeneration.from_pretrained(os.path.join(trained_model, 'pytorch_model.bin'),
+            model = KGCNBartForConditionalGeneration.from_pretrained(os.path.join(trained_model, 'pytorch_model.bin'),
                                                                        config=config, entity_weight=entity_embedding, relation_weight=relation_embedding)
     # log model statistic
     logger.info('Model trainable parameters: {}'.format(human_format(count_params(model))))
@@ -196,10 +196,12 @@ def run_summarization(args,
                                              do_train=True,
                                              do_eval=True,
                                              do_predict=True,
-                                             evaluation_strategy=IntervalStrategy.EPOCH,
+                                             evaluation_strategy=IntervalStrategy.STEPS,
+                                             eval_steps=5,
                                              prediction_loss_only=False,
-                                             per_device_train_batch_size=args.batch_size,
-                                             per_device_eval_batch_size=args.eval_batch_size,
+                                             auto_find_batch_size=True,
+                                             # per_device_train_batch_size=args.batch_size,
+                                             # per_device_eval_batch_size=args.eval_batch_size,
                                              gradient_accumulation_steps=args.gradient_accumulation_steps,
                                              learning_rate=args.learning_rate,
                                              weight_decay=args.lr_decay_rate,
@@ -211,6 +213,7 @@ def run_summarization(args,
                                              logging_strategy=IntervalStrategy.STEPS,
                                              logging_steps=args.logging_steps,
                                              save_strategy=IntervalStrategy.STEPS,
+                                             save_steps=5,
                                              save_total_limit=3,
                                              seed=args.random_seed,
                                              fp16=args.fp16,
