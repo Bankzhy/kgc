@@ -59,6 +59,11 @@ class RuntimeArguments:
         metadata={'help': "The dataset directory."}
     )
 
+    resume_from_checkpoint: str = field(
+        default=r"output/checkpoints/summarization/checkpoint-5000",
+        metadata={'help': "The dataset directory."}
+    )
+
     tensor_board_root: str = field(
         default=r"output/runs",
         metadata={'help': "The dataset directory."}
@@ -70,7 +75,7 @@ class RuntimeArguments:
     )
 
     trained_model: str = field(
-        default='pretrain_model/26',
+        default='pretrain_model/25',
         metadata={'help': 'Directory of trained model'}
     )
 
@@ -94,7 +99,7 @@ class RuntimeArguments:
     )
 
     n_epoch: int = field(
-        default=10,
+        default=5,
         metadata={'help': 'Number of data iterations for training'}
     )
 
