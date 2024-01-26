@@ -60,7 +60,7 @@ class RuntimeArguments:
     )
 
     resume_from_checkpoint: str = field(
-        default=r"output/checkpoints/summarization/checkpoint-20000",
+        default=r"output/checkpoints/summarization/checkpoint-21500",
         metadata={'help': "The dataset directory."}
     )
 
