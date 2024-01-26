@@ -53,5 +53,5 @@ class LogStateCallBack(TrainerCallback):
             best_steps = int(state.best_model_checkpoint.split('-')[-1])
         except Exception:
             best_steps = -1
-        logger.info(f'Best model at epoch {self.map_step_epoch[best_steps]} / step {best_steps}, '
-                    f'scores: {state.best_metric}')
+        # logger.info(f'Best model at epoch {self.map_step_epoch[best_steps]} / step {best_steps}, '
+        #             f'scores: {state.best_metric}')
