@@ -1,3 +1,4 @@
+import numpy as np
 from tokenizers import Tokenizer
 from tokenizers.models import BPE, WordLevel
 from tokenizers.trainers import BpeTrainer, WordLevelTrainer
@@ -306,7 +307,8 @@ class Vocab(object):
         """
         if self.index_offset:
             batch = [[self.restore_index(index) for index in seq] for seq in batch]
-        return self.tokenizer.decode_batch(sequences=batch, skip_special_tokens=skip_special_tokens)
+        predictions = np.where(batch != -100, batch, self.get_pad_index())
+        return self.tokenizer.decode_batch(sequences=predictions, skip_special_tokens=skip_special_tokens)
 
     def get_pad_index(self):
         return self.tokenizer.token_to_id(Vocab.PAD_TOKEN)

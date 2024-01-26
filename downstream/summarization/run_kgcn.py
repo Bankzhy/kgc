@@ -279,7 +279,7 @@ def run_summarization(args,
     predict_results = trainer.predict(test_dataset=test_dataset,
                                       metric_key_prefix='test',
                                       max_length=args.max_nl_len,
-                                      num_beams=3)
+                                      num_beams=5)
     predict_metrics = predict_results.metrics
     references = predict_metrics.pop('test_references')
     candidates = predict_metrics.pop('test_candidates')
