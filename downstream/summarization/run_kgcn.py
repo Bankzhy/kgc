@@ -199,8 +199,8 @@ def run_summarization(args,
                                              eval_steps=2500,
                                              prediction_loss_only=False,
                                              auto_find_batch_size=True,
-                                             # per_device_train_batch_size=args.batch_size,
-                                             # per_device_eval_batch_size=args.eval_batch_size,
+                                             # per_device_train_batch_size=1,
+                                             # per_device_eval_batch_size=1,
                                              gradient_accumulation_steps=args.gradient_accumulation_steps,
                                              learning_rate=args.learning_rate,
                                              weight_decay=args.lr_decay_rate,
@@ -246,7 +246,7 @@ def run_summarization(args,
     # --------------------------------------------------
     # train
     # --------------------------------------------------
-    only_test = False
+    only_test = True
     if not only_test:
         logger.info('-' * 100)
         logger.info('Start training')
@@ -279,7 +279,7 @@ def run_summarization(args,
     predict_results = trainer.predict(test_dataset=test_dataset,
                                       metric_key_prefix='test',
                                       max_length=args.max_nl_len,
-                                      num_beams=args.beam_width)
+                                      num_beams=3)
     predict_metrics = predict_results.metrics
     references = predict_metrics.pop('test_references')
     candidates = predict_metrics.pop('test_candidates')

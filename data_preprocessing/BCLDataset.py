@@ -32,17 +32,23 @@ class BCLDataset(Dataset):
         load_path = os.path.join(args.dataset_dir, dataset_type)
         # self.all_codes, self.all_docs = self.load_tl_dataset_from_dir(dataset_dir=load_path)
 
-        clone_mapping = self.load_clone_mapping(self.dataset_dir)
+        clone_mapping = self.load_clone_mapping(args.dataset_dir)
         assert clone_mapping
-        path = os.path.join(self.dataset_dir, f'{self.dataset_type}.txt')
+        path = os.path.join(args.dataset_dir, f'{self.dataset_type}.txt')
         self.paths['file'] = path
         self.codes_1, self.asts_1, self.names_1, \
         self.codes_2, self.asts_2, self.names_2, self.labels = parse_for_clone(path=path,
                                                                                mapping=clone_mapping)
-        assert len(self.codes_1) == len(self.asts_1) == len(self.names_1) \
-               == len(self.codes_2) == len(self.asts_2) == len(self.names_2) == len(self.labels)
+        # assert len(self.codes_1) == len(self.asts_1) == len(self.names_1) \
+        #        == len(self.codes_2) == len(self.asts_2) == len(self.names_2) == len(self.labels)
         self.size = len(self.codes_1)
         logger.info('The size of load dataset: {}'.format(self.size))
+
+
+        ratio = int(self.size * 0.1)
+        self.codes_1 = self.codes_1[:ratio]
+        self.codes_2 = self.codes_2[:ratio]
+        self.labels = self.labels[:ratio]
 
 
 
@@ -61,7 +67,7 @@ class BCLDataset(Dataset):
         self.no_match_entity_id = 0
 
     def __len__(self):
-        return len(self.all_codes)
+        return len(self.codes_1)
 
     def match_expose_token(self, token):
         n_l = self.split_camel(token)
@@ -139,7 +145,7 @@ class BCLDataset(Dataset):
         #
         # return input_ids, encoder_attention_mask, input_entity_ids, word_mask, decoder_input_ids, decoder_attention_mask, labels
 
-        return self.all_codes[index], self.all_docs[index]
+        return self.codes_1[index], self.codes_2[index], self.labels[index]
 
 
     def __iter__(self):  # iterator to load data

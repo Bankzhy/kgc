@@ -17,14 +17,13 @@ from downstream.summarization.eval.metrics import avg_ir_metrics, bleu
 from downstream.clone.clone_args import add_args
 
 import torch
-from transformers import Seq2SeqTrainingArguments, SchedulerType, IntervalStrategy, EarlyStoppingCallback
+from transformers import Seq2SeqTrainingArguments, SchedulerType, IntervalStrategy, EarlyStoppingCallback, BartConfig
 import argparse
 import enums
 from typing import Union, Tuple
 
 from data_preprocessing.pretrain.CodeDataset import CodeDataset
 from data_preprocessing.pretrain.vocab import Vocab, load_vocab
-from model.configuration_bart import BartConfig
 from model.general import human_format, count_params, layer_wise_parameters
 from model.modeling_kgcnbart import KGCNBartForConditionalGeneration
 from pretrain.callbacks import LogStateCallBack
@@ -151,8 +150,8 @@ def run_summarization(args,
         else:
             logger.info('Loading the model from file')
             config = BartConfig.from_json_file(os.path.join(trained_model, 'config.json'))
-            model = KGCNBartForConditionalGeneration.from_pretrained(os.path.join(trained_model, 'pytorch_model.bin'),
-                                                                       config=config, entity_weight=entity_embedding, relation_weight=relation_embedding)
+            model = KGCNBartForConditionalGeneration.from_pretrained(os.path.join(trained_model),
+                                                                       entity_weight=entity_embedding, relation_weight=relation_embedding)
     # log model statistic
     logger.info('Model trainable parameters: {}'.format(human_format(count_params(model))))
     table = layer_wise_parameters(model)
@@ -191,7 +190,7 @@ def run_summarization(args,
         # result.update(accuracy_for_sequence(references=refs, candidates=cans))
         return result
 
-    training_args = Seq2SeqTrainingArguments(output_dir=os.path.join(args.checkpoint_root, enums.TASK_SUMMARIZATION),
+    training_args = Seq2SeqTrainingArguments(output_dir=os.path.join(args.checkpoint_root, enums.TASK_CLONE_DETECTION),
                                              overwrite_output_dir=True,
                                              do_train=True,
                                              do_eval=True,
@@ -209,7 +208,7 @@ def run_summarization(args,
                                              num_train_epochs=args.n_epoch,
                                              lr_scheduler_type=SchedulerType.LINEAR,
                                              warmup_steps=args.warmup_steps,
-                                             logging_dir=os.path.join(args.tensor_board_root, enums.TASK_SUMMARIZATION),
+                                             logging_dir=os.path.join(args.tensor_board_root, enums.TASK_CLONE_DETECTION),
                                              logging_strategy=IntervalStrategy.STEPS,
                                              logging_steps=args.logging_steps,
                                              save_strategy=IntervalStrategy.STEPS,
@@ -228,7 +227,7 @@ def run_summarization(args,
                                              dataloader_pin_memory=True,
                                              predict_with_generate=True)
     trainer = CodeTrainer(main_args=args,
-                          task=enums.TASK_SUMMARIZATION,
+                          task=enums.TASK_CLONE_DETECTION,
                           code_vocab=code_vocab,
                           nl_vocab=nl_vocab,
                           model=model,

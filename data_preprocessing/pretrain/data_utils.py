@@ -3,6 +3,7 @@ import os
 import logging
 import re
 import tokenize
+
 from io import StringIO
 from tqdm import tqdm
 import enums
@@ -385,13 +386,17 @@ def parse_for_clone(path, mapping):
                 source_1 = remove_comments_and_docstrings(source_1, lang=enums.LANG_JAVA)
                 source_1 = replace_string_literal(source_1)
                 # ast_1, name_1 = generate_single_ast_nl(source=source_1, lang=enums.LANG_JAVA)
-                code_1 = tokenize_source(source=source_1, lang=enums.LANG_JAVA)
+                # code_1 = tokenize_source(source=source_1, lang=enums.LANG_JAVA, use_regular=True)
+                code_1=source_1
+                code_1 = code_1.replace('\n', '')
 
                 source_2 = mapping[id_2]
                 source_2 = remove_comments_and_docstrings(source_2, lang=enums.LANG_JAVA)
                 source_2 = replace_string_literal(source_2)
                 # ast_2, name_2 = generate_single_ast_nl(source=source_2, lang=enums.LANG_JAVA)
-                code_2 = tokenize_source(source=source_2, lang=enums.LANG_JAVA)
+                # code_2 = tokenize_source(source=source_2, lang=enums.LANG_JAVA)
+                code_2 = source_2
+                code_2 = code_2.replace('\n', '')
 
                 label = int(label)
 
@@ -404,7 +409,7 @@ def parse_for_clone(path, mapping):
                 labels.append(label)
                 count += 1
             except Exception as e:
-                # logger.info(str(e))
+                logger.info(str(e))
                 continue
     return codes_1, asts_1, names_1, codes_2, asts_2, names_2, labels
 

@@ -40,12 +40,12 @@ class RuntimeArguments:
     )
 
     kg_path: str = field(
-        default=r"../../dataset/kg",
+        default=r"../../dataset/kg768",
         metadata={'help': "The KG directory."}
     )
 
     dataset_dir: str = field(
-        default=r"dataset/tl",
+        default=r"dataset/bigclone",
         metadata={'help': "The dataset directory."}
     )
 
@@ -65,12 +65,12 @@ class RuntimeArguments:
     )
 
     trained_vocab: str = field(
-        default='pretrain_model/s1/vocab',
+        default='pretrain_model/vocab',
         metadata={'help': 'Directory of trained vocabs'}
     )
 
     trained_model: str = field(
-        default='pretrain_model/s1/model',
+        default='pretrain_model/model',
         metadata={'help': 'Directory of trained model'}
     )
 
@@ -201,7 +201,7 @@ class PreprocessingArguments:
     )
 
     max_code_len: int = field(
-        default=256,
+        default=512,
         metadata={'help': 'Maximum length of code sequence'}
     )
 
