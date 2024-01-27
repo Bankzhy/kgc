@@ -166,7 +166,8 @@ def run_summarization(args,
 
     def decode_preds(preds):
         preds, labels = preds
-        decoded_preds = nl_vocab.decode_batch(preds)
+        predictions = np.where(preds != -100, preds, nl_vocab.get_pad_index())
+        decoded_preds = nl_vocab.decode_batch(predictions)
         decoded_labels = nl_vocab.decode_batch(labels)
         return decoded_labels, decoded_preds
 

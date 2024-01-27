@@ -142,9 +142,16 @@ def collate_fn(batch, args, task, entity_dict, code_vocab, nl_vocab, ast_vocab=N
             max_code_len=args.max_code_len,
         )
 
-        model_inputs['input_entity_ids'], model_inputs['word_mask'] = get_batch_entity_ids(args=args,
-                                                                                           input_tokens=code_raw,
-                                                                                           entity_dict=entity_dict)
+        input_entity_ids_1, word_mask_1 = get_batch_entity_ids(args=args, input_tokens=code_1_raw, entity_dict=entity_dict)
+        input_entity_ids_2, word_mask_2 = get_batch_entity_ids(args=args, input_tokens=code_2_raw,
+                                                               entity_dict=entity_dict)
+
+        model_inputs['input_entity_ids'] = input_entity_ids_1 + input_entity_ids_2
+        model_inputs['word_mask'] = word_mask_1 + word_mask_2
+
+        # model_inputs['input_entity_ids'], model_inputs['word_mask'] = get_batch_entity_ids(args=args,
+        #                                                                                    input_tokens=code_raw,
+        #                                                                                    entity_dict=entity_dict)
 
         # model_inputs['decoder_input_ids'], model_inputs['decoder_attention_mask'] = get_concat_batch_inputs(
         #     code_raw=code_2_raw,
@@ -300,9 +307,12 @@ def get_clone_batch_inputs(code1_raw, code2_raw, code_vocab, max_code_len):
     padding_mask2 = torch.tensor(padding_mask2, dtype=torch.long)
 
 
-    inputs = torch.cat([inputs for inputs in [inputs1, inputs2] if inputs is not None], dim=-1)
-    padding_mask = torch.cat([mask for mask in [padding_mask1, padding_mask2]
-                              if mask is not None], dim=-1)
+    # inputs = torch.cat([inputs for inputs in [inputs1, inputs2] if inputs is not None], dim=-1)
+    # padding_mask = torch.cat([mask for mask in [padding_mask1, padding_mask2]
+    #                           if mask is not None], dim=-1)
+
+    inputs = inputs1 + inputs2
+    padding_mask = padding_mask1 + padding_mask2
 
     # to tensor
     return inputs, padding_mask
