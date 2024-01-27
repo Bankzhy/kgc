@@ -307,7 +307,6 @@ class Vocab(object):
         """
         if self.index_offset:
             batch = [[self.restore_index(index) for index in seq] for seq in batch]
-        # predictions = np.where(batch != -100, batch, self.get_pad_index())
         return self.tokenizer.decode_batch(sequences=batch, skip_special_tokens=skip_special_tokens)
 
     def get_pad_index(self):
