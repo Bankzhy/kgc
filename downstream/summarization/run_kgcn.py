@@ -166,6 +166,7 @@ def run_summarization(args,
 
     def decode_preds(preds):
         preds, labels = preds
+        print(preds)
         decoded_preds = nl_vocab.decode_batch(preds)
         decoded_labels = nl_vocab.decode_batch(labels)
         return decoded_labels, decoded_preds
@@ -192,6 +193,7 @@ def run_summarization(args,
 
     training_args = Seq2SeqTrainingArguments(output_dir=os.path.join(args.checkpoint_root, enums.TASK_SUMMARIZATION),
                                              overwrite_output_dir=True,
+                                             # use_cpu=True,
                                              do_train=True,
                                              do_eval=True,
                                              do_predict=True,
@@ -246,7 +248,7 @@ def run_summarization(args,
     # --------------------------------------------------
     # train
     # --------------------------------------------------
-    only_test = False
+    only_test = True
     if not only_test:
         logger.info('-' * 100)
         logger.info('Start training')
