@@ -6,6 +6,7 @@ import sys
 import numpy as np
 
 from data_preprocessing.BCLDataset import BCLDataset
+from model.modeling_kgcnbart import KGCNBartForSequenceClassification
 
 curPath = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
 sys.path.append(curPath)
@@ -25,7 +26,7 @@ from typing import Union, Tuple
 from data_preprocessing.pretrain.CodeDataset import CodeDataset
 from data_preprocessing.pretrain.vocab import Vocab, load_vocab
 from model.general import human_format, count_params, layer_wise_parameters
-from model.modeling_kgcnbart import KGCNBartForConditionalGeneration
+
 from pretrain.callbacks import LogStateCallBack
 from pretrain.trainer import CodeTrainer
 
@@ -44,7 +45,7 @@ def load_entity_dict(args):
     return dict
 
 def run_summarization(args,
-              trained_model: Union[KGCNBartForConditionalGeneration, str] = None,
+              trained_model: Union[KGCNBartForSequenceClassification, str] = None,
               trained_vocab: Union[Tuple[Vocab, Vocab, Vocab], str] = None):
     tasks = args.pre_train_tasks
     trained_model = args.trained_model
@@ -65,7 +66,7 @@ def run_summarization(args,
 
     assert not trained_model or \
         isinstance(trained_model, str) or \
-        isinstance(trained_model, KGCNBartForConditionalGeneration), \
+        isinstance(trained_model, KGCNBartForSequenceClassification), \
         f'The model type is not supported, expect Bart model or string of model dir, got {type(trained_model)}'
 
     if trained_vocab is None and args.trained_vocab is not None:
@@ -144,13 +145,13 @@ def run_summarization(args,
 
 
     if trained_model:
-        if isinstance(trained_model, KGCNBartForConditionalGeneration):
+        if isinstance(trained_model, KGCNBartForSequenceClassification):
             logger.info('Model is passed through parameter')
             model = trained_model
         else:
             logger.info('Loading the model from file')
             config = BartConfig.from_json_file(os.path.join(trained_model, 'config.json'))
-            model = KGCNBartForConditionalGeneration.from_pretrained(os.path.join(trained_model),
+            model = KGCNBartForSequenceClassification.from_pretrained(os.path.join(trained_model),
                                                                        entity_weight=entity_embedding, relation_weight=relation_embedding)
     # log model statistic
     logger.info('Model trainable parameters: {}'.format(human_format(count_params(model))))
@@ -200,8 +201,8 @@ def run_summarization(args,
                                              eval_steps=5,
                                              prediction_loss_only=False,
                                              auto_find_batch_size=True,
-                                             # per_device_train_batch_size=args.batch_size,
-                                             # per_device_eval_batch_size=args.eval_batch_size,
+                                             # per_device_train_batch_size=1,
+                                             # per_device_eval_batch_size=1,
                                              gradient_accumulation_steps=args.gradient_accumulation_steps,
                                              learning_rate=args.learning_rate,
                                              weight_decay=args.lr_decay_rate,

@@ -1894,9 +1894,9 @@ class KGCNBartForConditionalGeneration(BartPreTrainedModel):
 class KGCNBartForSequenceClassification(BartPreTrainedModel):
     _tied_weights_keys = ["encoder.embed_tokens.weight", "decoder.embed_tokens.weight"]
 
-    def __init__(self, config: BartConfig, **kwargs):
+    def __init__(self, config: BartConfig, entity_weight, relation_weight, **kwargs):
         super().__init__(config, **kwargs)
-        self.model = KGCNBartModel(config)
+        self.model = KGCNBartModel(config, entity_weight, relation_weight)
         self.classification_head = BartClassificationHead(
             config.d_model,
             config.d_model,
@@ -1918,6 +1918,8 @@ class KGCNBartForSequenceClassification(BartPreTrainedModel):
     def forward(
         self,
         input_ids: torch.LongTensor = None,
+        input_entity_ids: torch.LongTensor = None,
+        word_mask: Optional[torch.Tensor] = None,
         attention_mask: Optional[torch.Tensor] = None,
         decoder_input_ids: Optional[torch.LongTensor] = None,
         decoder_attention_mask: Optional[torch.LongTensor] = None,
@@ -1950,6 +1952,8 @@ class KGCNBartForSequenceClassification(BartPreTrainedModel):
         outputs = self.model(
             input_ids,
             attention_mask=attention_mask,
+            input_entity_ids=input_entity_ids,
+            word_mask=word_mask,
             decoder_input_ids=decoder_input_ids,
             decoder_attention_mask=decoder_attention_mask,
             head_mask=head_mask,
