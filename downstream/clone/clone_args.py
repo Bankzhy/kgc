@@ -201,7 +201,7 @@ class PreprocessingArguments:
     )
 
     max_code_len: int = field(
-        default=512,
+        default=256,
         metadata={'help': 'Maximum length of code sequence'}
     )
 
