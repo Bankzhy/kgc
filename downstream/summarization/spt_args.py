@@ -60,7 +60,7 @@ class RuntimeArguments:
     )
 
     resume_from_checkpoint: str = field(
-        default=r"output/checkpoints/summarization/checkpoint-20000",
+        default=r"output/checkpoints/summarization/checkpoint-42500",
         metadata={'help': "The dataset directory."}
     )
 
@@ -99,7 +99,7 @@ class RuntimeArguments:
     )
 
     n_epoch: int = field(
-        default=10,
+        default=15,
         metadata={'help': 'Number of data iterations for training'}
     )
 
