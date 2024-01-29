@@ -60,7 +60,7 @@ class RuntimeArguments:
     )
 
     resume_from_checkpoint: str = field(
-        default=r"output/checkpoints/summarization/checkpoint-42500",
+        default=r"output/checkpoints/summarization/checkpoint-50000",
         metadata={'help': "The dataset directory."}
     )
 
@@ -290,7 +290,7 @@ class OptimizerArguments:
     )
 
     early_stop_patience: int = field(
-        default=3,
+        default=0,
         metadata={'help': 'Stop training if performance does not improve in n epoch, 0 to disable'}
     )
 

@@ -200,7 +200,7 @@ class OptimizerArguments:
     )
 
     early_stop_patience: int = field(
-        default=20,
+        default=0,
         metadata={'help': 'Stop training if performance does not improve in n epoch, 0 to disable'}
     )
 
