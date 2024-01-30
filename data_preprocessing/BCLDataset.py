@@ -45,10 +45,10 @@ class BCLDataset(Dataset):
         logger.info('The size of load dataset: {}'.format(self.size))
 
 
-        ratio = int(self.size * 0.1)
-        self.codes_1 = self.codes_1[:ratio]
-        self.codes_2 = self.codes_2[:ratio]
-        self.labels = self.labels[:ratio]
+        # ratio = int(self.size * 0.01)
+        # self.codes_1 = self.codes_1[:ratio]
+        # self.codes_2 = self.codes_2[:ratio]
+        # self.labels = self.labels[:ratio]
 
 
 

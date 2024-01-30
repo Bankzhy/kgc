@@ -290,7 +290,7 @@ def pad_batch(batch, pad_value=0):
 def get_clone_batch_inputs(code1_raw, code2_raw, code_vocab, max_code_len):
     # set post processor
     code_vocab.tokenizer.post_processor = Vocab.sep_processor
-    max_len = int(max_code_len / 2)
+    max_len = int(max_code_len / 2) - 1
     # set truncation
     if max_code_len:
         code_vocab.tokenizer.enable_truncation(max_length=max_len)
@@ -300,13 +300,18 @@ def get_clone_batch_inputs(code1_raw, code2_raw, code_vocab, max_code_len):
     inputs1, padding_mask1 = code_vocab.encode_batch(code1_raw, max_length=max_len, pad=True)
     inputs2, padding_mask2 = code_vocab.encode_batch(code2_raw, max_length=max_len, pad=True)
 
+    inputs1[0].append(2)
+    inputs2[0].append(2)
+    padding_mask1[0].append(1)
+    padding_mask2[0].append(1)
+
     inputs1 = torch.tensor(inputs1, dtype=torch.long)
     inputs2 = torch.tensor(inputs2, dtype=torch.long)
     padding_mask1 = torch.tensor(padding_mask1, dtype=torch.long)
     padding_mask2 = torch.tensor(padding_mask2, dtype=torch.long)
 
 
-    inputs = torch.cat([inputs for inputs in [inputs1, inputs2] if inputs is not None], dim=-1)
+    inputs = torch.cat([inputs for inputs in [inputs1,  inputs2] if inputs is not None], dim=-1)
     padding_mask = torch.cat([mask for mask in [padding_mask1, padding_mask2]
                               if mask is not None], dim=-1)
 

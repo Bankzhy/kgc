@@ -173,13 +173,37 @@ def run_summarization(args,
         return decoded_labels, decoded_preds
 
     # compute metrics
+    # def compute_valid_metrics(eval_preds):
+    #     decoded_labels, decoded_preds = decode_preds(eval_preds)
+    #     refs = [ref.strip().split() for ref in decoded_labels]
+    #     cans = [can.strip().split() for can in decoded_preds]
+    #     result = {}
+    #     result.update(bleu(references=refs, candidates=cans))
+    #     return result
+
     def compute_valid_metrics(eval_preds):
-        decoded_labels, decoded_preds = decode_preds(eval_preds)
-        refs = [ref.strip().split() for ref in decoded_labels]
-        cans = [can.strip().split() for can in decoded_preds]
-        result = {}
-        result.update(bleu(references=refs, candidates=cans))
+        # decoded_preds, decoded_labels = eval_preds
+        logits = eval_preds.predictions[0]
+        labels = eval_preds.label_ids
+        predictions = np.argmax(logits, axis=-1)
+        from sklearn.metrics import recall_score
+        recall = recall_score(labels, predictions)
+        from sklearn.metrics import precision_score
+        precision = precision_score(labels, predictions)
+        from sklearn.metrics import f1_score
+        f1 = f1_score(labels, predictions)
+        result = {
+            "eval_recall": float(recall),
+            "eval_precision": float(precision),
+            "eval_f1": float(f1),
+        }
+
+        logger.info("***** Eval results *****")
+        for key in sorted(result.keys()):
+            logger.info("  %s = %s", key, str(round(result[key], 4)))
+
         return result
+
 
     def compute_test_metrics(eval_preds):
         decoded_labels, decoded_preds = decode_preds(eval_preds)
@@ -221,13 +245,13 @@ def run_summarization(args,
                                              dataloader_drop_last=False,
                                              run_name=args.model_name,
                                              load_best_model_at_end=True,
-                                             metric_for_best_model='bleu',
+                                             # metric_for_best_model='bleu',
                                              greater_is_better=True,
                                              ignore_data_skip=False,
                                              label_smoothing_factor=args.label_smoothing,
                                              report_to=['tensorboard'],
                                              dataloader_pin_memory=True,
-                                             predict_with_generate=True)
+                                             predict_with_generate=False)
     trainer = CodeTrainer(main_args=args,
                           task=enums.TASK_CLONE_DETECTION,
                           code_vocab=code_vocab,
