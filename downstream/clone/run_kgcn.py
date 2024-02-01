@@ -5,14 +5,14 @@ import sys
 
 import numpy as np
 
-from data_preprocessing.BCLDataset import BCLDataset
-from model.modeling_kgcnbart import KGCNBartForSequenceClassification
-
 curPath = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
 sys.path.append(curPath)
 sys.path.append('../..')
 print("当前的工作目录：",os.getcwd())
 print("python搜索模块的路径集合",sys.path)
+
+from data_preprocessing.BCLDataset import BCLDataset
+from model.modeling_kgcnbart import KGCNBartForSequenceClassification
 
 from downstream.summarization.eval.metrics import avg_ir_metrics, bleu
 from downstream.clone.clone_args import add_args
