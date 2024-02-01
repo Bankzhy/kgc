@@ -133,7 +133,11 @@ def collate_fn(batch, args, task, entity_dict, code_vocab, nl_vocab, ast_vocab=N
         code_1_raw, code_2_raw, labels = map(list, zip(*batch))
         # code_1_raw, ast_1_raw, name_1_raw, code_2_raw, ast_2_raw, name_2_raw, labels = map(list, zip(*batch))
 
-        code_raw = [code_1_raw[0] +code_2_raw[0]]
+        code_raw = []
+        for i in range(0, len(code_1_raw)):
+            cr = code_1_raw[i] + code_2_raw[i]
+            code_raw.append(cr)
+
 
         model_inputs['input_ids'], model_inputs['attention_mask'] = get_clone_batch_inputs(
             code1_raw=code_1_raw,
@@ -287,6 +291,19 @@ def pad_batch(batch, pad_value=0):
     batch = list(zip(*itertools.zip_longest(*batch, fillvalue=pad_value)))
     return torch.tensor([list(b) for b in batch]).long()
 
+# def get_clone_batch_inputs(code1_raw, code2_raw, code_vocab, max_code_len):
+#     batch_inputs = []
+#     batch_masks = []
+#
+#     for i in range(0, len(code1_raw)):
+#         batch_input, batch_mask = get_clone_inputs(code1_raw[i], code2_raw[i], code_vocab, max_code_len)
+#         batch_inputs.append(batch_input)
+#         batch_masks.append(batch_mask)
+#
+#     torch.tensor(batch_inputs)
+#     torch.tensor(batch_masks)
+#     return batch_inputs, batch_masks
+
 def get_clone_batch_inputs(code1_raw, code2_raw, code_vocab, max_code_len):
     # set post processor
     code_vocab.tokenizer.post_processor = Vocab.sep_processor
@@ -300,10 +317,17 @@ def get_clone_batch_inputs(code1_raw, code2_raw, code_vocab, max_code_len):
     inputs1, padding_mask1 = code_vocab.encode_batch(code1_raw, max_length=max_len, pad=True)
     inputs2, padding_mask2 = code_vocab.encode_batch(code2_raw, max_length=max_len, pad=True)
 
-    inputs1[0].append(2)
-    inputs2[0].append(2)
-    padding_mask1[0].append(1)
-    padding_mask2[0].append(1)
+    for i in  range(0, len(inputs1)):
+        inputs1[i].append(2)
+
+    for i in range(0, len(inputs2)):
+        inputs2[i].append(2)
+
+    for i in range(0, len(padding_mask1)):
+        padding_mask1[i].append(1)
+
+    for i in range(0, len(padding_mask2)):
+        padding_mask2[i].append(1)
 
     inputs1 = torch.tensor(inputs1, dtype=torch.long)
     inputs2 = torch.tensor(inputs2, dtype=torch.long)
