@@ -373,7 +373,7 @@ def parse_for_clone(path, mapping):
     labels = []
     with open(path, encoding='utf-8') as f:
         lines = f.readlines()
-        target_count = len(lines) * 0.1
+        target_count = len(lines) * 1
         count = 0
         # lines = random.sample(lines, 1000)
 

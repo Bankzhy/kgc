@@ -45,7 +45,7 @@ class RuntimeArguments:
     )
 
     dataset_dir: str = field(
-        default=r"dataset/bigclone",
+        default=r"dataset/small10",
         metadata={'help': "The dataset directory."}
     )
 
