@@ -221,7 +221,7 @@ def run_summarization(args,
             "eval_f1": float(f1),
         }
 
-        logger.info("***** Eval results *****")
+        logger.info("***** Test results *****")
         for key in sorted(result.keys()):
             logger.info("  %s = %s", key, str(round(result[key], 4)))
         return result
@@ -241,7 +241,7 @@ def run_summarization(args,
                                              learning_rate=args.learning_rate,
                                              weight_decay=args.lr_decay_rate,
                                              max_grad_norm=args.grad_clipping_norm,
-                                             num_train_epochs=5,
+                                             num_train_epochs=1,
                                              lr_scheduler_type=SchedulerType.LINEAR,
                                              warmup_steps=args.warmup_steps,
                                              logging_dir=os.path.join(args.tensor_board_root, enums.TASK_CLONE_DETECTION),
