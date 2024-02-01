@@ -206,14 +206,24 @@ def run_summarization(args,
 
 
     def compute_test_metrics(eval_preds):
-        decoded_labels, decoded_preds = decode_preds(eval_preds)
-        result = {'references': decoded_labels, 'candidates': decoded_preds}
-        refs = [ref.strip().split() for ref in decoded_labels]
-        cans = [can.strip().split() for can in decoded_preds]
-        result.update(bleu(references=refs, candidates=cans))
-        # result.update(rouge_l(references=refs, candidates=cans))
-        # result.update(avg_ir_metrics(references=refs, candidates=cans))
-        # result.update(accuracy_for_sequence(references=refs, candidates=cans))
+        logits = eval_preds.predictions[0]
+        labels = eval_preds.label_ids
+        predictions = np.argmax(logits, axis=-1)
+        from sklearn.metrics import recall_score
+        recall = recall_score(labels, predictions)
+        from sklearn.metrics import precision_score
+        precision = precision_score(labels, predictions)
+        from sklearn.metrics import f1_score
+        f1 = f1_score(labels, predictions)
+        result = {
+            "eval_recall": float(recall),
+            "eval_precision": float(precision),
+            "eval_f1": float(f1),
+        }
+
+        logger.info("***** Eval results *****")
+        for key in sorted(result.keys()):
+            logger.info("  %s = %s", key, str(round(result[key], 4)))
         return result
 
     training_args = Seq2SeqTrainingArguments(output_dir=os.path.join(args.checkpoint_root, enums.TASK_CLONE_DETECTION),
@@ -222,7 +232,7 @@ def run_summarization(args,
                                              do_eval=True,
                                              do_predict=True,
                                              evaluation_strategy=IntervalStrategy.STEPS,
-                                             eval_steps=5,
+                                             eval_steps=500,
                                              prediction_loss_only=False,
                                              auto_find_batch_size=True,
                                              # per_device_train_batch_size=1,
@@ -238,7 +248,7 @@ def run_summarization(args,
                                              logging_strategy=IntervalStrategy.STEPS,
                                              logging_steps=args.logging_steps,
                                              save_strategy=IntervalStrategy.STEPS,
-                                             save_steps=5,
+                                             save_steps=500,
                                              save_total_limit=3,
                                              seed=args.random_seed,
                                              fp16=args.fp16,
