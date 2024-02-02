@@ -345,7 +345,7 @@ def load_dataset_from_dir(dataset_dir, dataset_type):
     #        all_only_names, all_docs
     return paths, languages, all_sources, all_codes, all_docs
 
-def parse_for_clone(path, mapping):
+def parse_for_clone(path, mapping, dataset_type):
     """
     Load and parse for code clone detection.
 
@@ -364,6 +364,10 @@ def parse_for_clone(path, mapping):
             - List of label integers
 
     """
+    ratio = 1
+    if dataset_type == 'valid':
+        ratio = 0.1
+
     codes_1 = []
     asts_1 = []
     names_1 = []
@@ -373,7 +377,7 @@ def parse_for_clone(path, mapping):
     labels = []
     with open(path, encoding='utf-8') as f:
         lines = f.readlines()
-        target_count = len(lines) * 1
+        target_count = len(lines) * ratio
         count = 0
         # lines = random.sample(lines, 1000)
 
