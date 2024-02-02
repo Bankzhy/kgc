@@ -137,38 +137,15 @@ def collate_fn(batch, args, task, entity_dict, code_vocab, nl_vocab, ast_vocab=N
         for i in range(0, len(code_1_raw)):
             cr = code_1_raw[i] + code_2_raw[i]
             code_raw.append(cr)
-
-
         model_inputs['input_ids'], model_inputs['attention_mask'] = get_clone_batch_inputs(
             code1_raw=code_1_raw,
             code2_raw=code_2_raw,
             code_vocab=code_vocab,
             max_code_len=args.max_code_len,
         )
-
-        # input_entity_ids_1, word_mask_1 = get_batch_entity_ids(args=args, input_tokens=code_1_raw, entity_dict=entity_dict)
-        # input_entity_ids_2, word_mask_2 = get_batch_entity_ids(args=args, input_tokens=code_2_raw,
-        #                                                        entity_dict=entity_dict)
-        # model_inputs['input_entity_ids'] = input_entity_ids_1 + input_entity_ids_2
-        # model_inputs['word_mask'] = word_mask_1 + word_mask_2
-
         model_inputs['input_entity_ids'], model_inputs['word_mask'] = get_batch_entity_ids(args=args,
                                                                                            input_tokens=code_raw,
                                                                                            entity_dict=entity_dict)
-
-        # model_inputs['decoder_input_ids'], model_inputs['decoder_attention_mask'] = get_concat_batch_inputs(
-        #     code_raw=code_2_raw,
-        #     code_vocab=code_vocab,
-        #     max_code_len=args.max_code_len,
-        #     ast_raw=ast_2_raw,
-        #     ast_vocab=ast_vocab,
-        #     max_ast_len=args.max_ast_len,
-        #     nl_raw=name_2_raw,
-        #     nl_vocab=nl_vocab,
-        #     max_nl_len=args.max_nl_len,
-        #     no_ast=args.no_ast,
-        #     no_nl=args.no_nl
-        # )
         model_inputs['labels'] = torch.tensor(labels, dtype=torch.long)
 
 

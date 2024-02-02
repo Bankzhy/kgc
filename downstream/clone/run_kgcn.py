@@ -260,8 +260,7 @@ def run_summarization(args,
                                              ignore_data_skip=False,
                                              label_smoothing_factor=args.label_smoothing,
                                              report_to=['tensorboard'],
-                                             dataloader_pin_memory=True,
-                                             predict_with_generate=False)
+                                             dataloader_pin_memory=True)
     trainer = CodeTrainer(main_args=args,
                           task=enums.TASK_CLONE_DETECTION,
                           code_vocab=code_vocab,
