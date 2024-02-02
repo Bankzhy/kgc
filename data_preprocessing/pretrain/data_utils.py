@@ -365,7 +365,7 @@ def parse_for_clone(path, mapping, dataset_type):
 
     """
     ratio = 1
-    if dataset_type == 'valid':
+    if dataset_type == 'valid' or dataset_type == 'test':
         ratio = 0.1
 
     codes_1 = []

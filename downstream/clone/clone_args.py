@@ -98,6 +98,11 @@ class RuntimeArguments:
         metadata={'help': 'Number of data iterations for training'}
     )
 
+    resume_from_checkpoint: str = field(
+        default=r"output/checkpoints/clone/checkpoint-7000",
+        metadata={'help': "The dataset directory."}
+    )
+
     batch_size: int = field(
         default=16,
         metadata={'help': 'Batch size for training on each device'}
