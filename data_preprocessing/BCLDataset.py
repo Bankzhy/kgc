@@ -38,7 +38,7 @@ class BCLDataset(Dataset):
         self.paths['file'] = path
         self.codes_1, self.asts_1, self.names_1, \
         self.codes_2, self.asts_2, self.names_2, self.labels = parse_for_clone(path=path,
-                                                                               mapping=clone_mapping)
+                                                                               mapping=clone_mapping, dataset_type=dataset_type)
         # assert len(self.codes_1) == len(self.asts_1) == len(self.names_1) \
         #        == len(self.codes_2) == len(self.asts_2) == len(self.names_2) == len(self.labels)
         self.size = len(self.codes_1)
