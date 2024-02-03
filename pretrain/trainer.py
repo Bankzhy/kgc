@@ -36,7 +36,7 @@ class CodeTrainer(Seq2SeqTrainer):
         """
 
         return DataLoader(dataset=self.train_dataset,
-                          # batch_size=self.main_args.batch_size,
+                          batch_size=self.main_args.batch_size,
                           shuffle=True,
                           collate_fn=lambda batch: collate_fn(batch,
                                                               args=self.main_args,
