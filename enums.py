@@ -10,6 +10,6 @@ LANG_JAVASCRIPT = 'javascript'
 LANG_RUBY = 'ruby'
 LANG_C_SHARP = 'c_sharp'
 PRE_TRAIN_TASKS = [
-    # TASK_MASS,
-    TASK_NSP
+    TASK_MASS,
+    # TASK_NSP
 ]
