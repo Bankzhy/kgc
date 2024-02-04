@@ -207,7 +207,7 @@ def run_summarization(args,
                                              learning_rate=args.learning_rate,
                                              weight_decay=args.lr_decay_rate,
                                              max_grad_norm=args.grad_clipping_norm,
-                                             num_train_epochs=10,
+                                             num_train_epochs=5,
                                              lr_scheduler_type=SchedulerType.LINEAR,
                                              warmup_steps=args.warmup_steps,
                                              logging_dir=os.path.join(args.tensor_board_root, enums.TASK_SUMMARIZATION),
@@ -252,8 +252,8 @@ def run_summarization(args,
     if not only_test:
         logger.info('-' * 100)
         logger.info('Start training')
-        train_result = trainer.train()
-        # train_result = trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
+        # train_result = trainer.train()
+        train_result = trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
         logger.info('Training finished')
         trainer.save_model(args.model_root)
         trainer.save_state()
