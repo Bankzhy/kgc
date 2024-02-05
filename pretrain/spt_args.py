@@ -27,7 +27,7 @@ class RuntimeArguments:
         metadata={'help': "The output directory where the model predictions and checkpoints will be written."}
     )
     resume_from_checkpoint: str = field(
-        default="output/mass/checkpoint-42500",
+        default="output/mass/checkpoint-102500",
         metadata={'help': "The output directory where the model predictions and checkpoints will be written."}
     )
     tensor_board_root: str = field(
@@ -148,12 +148,12 @@ class RuntimeArguments:
     )
 
     batch_size: int = field(
-        default=24,
+        default=16,
         metadata={'help': 'Batch size for training on each device'}
     )
 
     eval_batch_size: int = field(
-        default=32,
+        default=16,
         metadata={'help': 'Batch size for evaluation on each device'}
     )
 
